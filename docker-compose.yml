@@ -1,3 +1,5 @@
+version: "3.9"
+
 services:
   create-origin-data-app:
     build: ./create-origin-data-app
@@ -11,3 +13,122 @@ services:
       - drop_interval=5
       - row_interval=60
     restart: on-failure
+    depends_on:
+      - kafka-init
+    networks:
+      - project-net
+
+  # -----------------------------
+  # Kafka Broker 1
+  # -----------------------------
+  kafka-1:
+    image: apache/kafka:3.7.0
+    container_name: kafka-1
+    hostname: kafka-1
+    networks:
+      project-net:
+        aliases:
+          - kafka-1
+    ports:
+      - "9092:9092"
+    volumes:
+      - ./kafka/server-1.properties:/opt/kafka/config/kraft/server.properties
+      - ./kafka/data/broker1:/var/lib/kafka/data
+    command: >
+      bash -c "/opt/kafka/bin/kafka-storage.sh format -t cluster-id-1 -c /opt/kafka/config/kraft/server.properties --ignore-formatted &&
+               /opt/kafka/bin/kafka-server-start.sh /opt/kafka/config/kraft/server.properties"
+
+  # -----------------------------
+  # Kafka Broker 2
+  # -----------------------------
+  kafka-2:
+    image: apache/kafka:3.7.0
+    container_name: kafka-2
+    hostname: kafka-2
+    networks:
+      project-net:
+        aliases:
+          - kafka-2
+    ports:
+      - "9093:9092"
+    volumes:
+      - ./kafka/server-2.properties:/opt/kafka/config/kraft/server.properties
+      - ./kafka/data/broker2:/var/lib/kafka/data
+    command: >
+      bash -c "/opt/kafka/bin/kafka-storage.sh format -t cluster-id-1 -c /opt/kafka/config/kraft/server.properties --ignore-formatted &&
+               /opt/kafka/bin/kafka-server-start.sh /opt/kafka/config/kraft/server.properties"
+
+  # -----------------------------
+  # Kafka Broker 3
+  # -----------------------------
+  kafka-3:
+    image: apache/kafka:3.7.0
+    container_name: kafka-3
+    hostname: kafka-3
+    networks:
+      project-net:
+        aliases:
+          - kafka-3
+    ports:
+      - "9094:9092"
+    volumes:
+      - ./kafka/server-3.properties:/opt/kafka/config/kraft/server.properties
+      - ./kafka/data/broker3:/var/lib/kafka/data
+    command: >
+      bash -c "/opt/kafka/bin/kafka-storage.sh format -t cluster-id-1 -c /opt/kafka/config/kraft/server.properties --ignore-formatted &&
+               /opt/kafka/bin/kafka-server-start.sh /opt/kafka/config/kraft/server.properties"
+
+  # -----------------------------
+  # Kafka 초기화 (토픽 생성)
+  # -----------------------------
+  kafka-init:
+    image: apache/kafka:3.7.0
+    container_name: kafka-init
+    depends_on:
+      - kafka-1
+      - kafka-2
+      - kafka-3
+    entrypoint: ["/bin/bash", "-c"]
+    networks:
+      - project-net
+    command: >
+      "
+      echo '[INIT] Waiting for Kafka brokers...' &&
+      sleep 20 &&
+      echo '[INIT] Deleting old topics...' &&
+      /opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka-1:9092,kafka-2:9092,kafka-3:9092 --delete --topic weather-data || true &&
+      /opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka-1:9092,kafka-2:9092,kafka-3:9092 --delete --topic error-data || true &&
+      echo '[INIT] Creating topics...' &&
+      sleep 5 &&
+      /opt/kafka/bin/kafka-topics.sh --create --topic weather-data --bootstrap-server kafka-1:9092 --partitions 6 --replication-factor 3 &&
+      /opt/kafka/bin/kafka-topics.sh --create --topic error-data --bootstrap-server kafka-1:9092 --partitions 3 --replication-factor 3 &&
+      echo '[INIT] Kafka topics recreated successfully ✅' &&
+      exit 0
+      "
+
+  # -----------------------------
+  # Kafka UI
+  # -----------------------------
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    container_name: kafka-ui
+    ports:
+      - "8080:8080"
+    environment:
+      - KAFKA_CLUSTERS_0_NAME=weather-cluster
+      - KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS=kafka-1:9092,kafka-2:9092,kafka-3:9092
+    depends_on:
+      - kafka-1
+      - kafka-2
+      - kafka-3
+    networks:
+      - project-net
+
+# -----------------------------
+# 공용 네트워크
+# -----------------------------
+networks:
+  project-net:
+    driver: bridge
+    name: project-net
+    attachable: true

@@ -1,3 +1,6 @@
 origin-data/*
+kafka/data/broker1/*
+kafka/data/broker2/*
+kafka/data/broker3/*
 
 !origin-data/.gitkeep
