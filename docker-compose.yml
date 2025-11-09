@@ -1,0 +1,10 @@
+services:
+  create-origin-data-app:
+    build: ./create-origin-data-app
+    container_name: create-origin-data-app
+    volumes:
+      - ./kaggle-data:/app/data/kaggle
+      - ./origin-data:/app/data/output
+    environment:
+      - PYTHONUNBUFFERED=1
+    restart: on-failure
