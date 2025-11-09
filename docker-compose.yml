@@ -100,7 +100,7 @@ services:
       /opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka-1:9092,kafka-2:9092,kafka-3:9092 --delete --topic error-data || true &&
       echo '[INIT] Creating topics...' &&
       sleep 5 &&
-      /opt/kafka/bin/kafka-topics.sh --create --topic weather-data --bootstrap-server kafka-1:9092 --partitions 6 --replication-factor 3 &&
+      /opt/kafka/bin/kafka-topics.sh --create --topic weather-data --bootstrap-server kafka-1:9092 --partitions 10 --replication-factor 3 &&
       /opt/kafka/bin/kafka-topics.sh --create --topic error-data --bootstrap-server kafka-1:9092 --partitions 3 --replication-factor 3 &&
       echo '[INIT] Kafka topics recreated successfully ✅' &&
       exit 0
@@ -138,6 +138,53 @@ services:
         condition: service_completed_successfully
     networks: [project-net]
     restart: on-failure
+
+# -----------------------------
+  # MinIO (Object Storage)
+  # -----------------------------
+  minio-init:
+    image: busybox
+    command: rm -rf /data/*
+    volumes:
+      - ./minio-data:/data
+
+  minio:
+    image: minio/minio:latest
+    container_name: minio
+    hostname: minio
+    restart: always
+    depends_on:
+      - minio-init
+    environment:
+      - MINIO_ROOT_USER=minioadmin       # Access Key
+      - MINIO_ROOT_PASSWORD=minioadmin   # Secret Key
+    command: server /data --console-address ":9001"
+    ports:
+      - "9000:9000"   # S3 API endpoint
+      - "9001:9001"   # Web Console (UI)
+    volumes:
+      - ./minio-data:/data
+    networks:
+      - project-net
+
+  # -----------------------------
+  # MinIO Client (옵션)
+  # -----------------------------
+  mc:
+    image: minio/mc:latest
+    container_name: minio-client
+    depends_on:
+      - minio
+    networks:
+      - project-net
+    entrypoint: >
+      /bin/sh -c "
+      sleep 5;
+      mc alias set myminio http://minio:9000 minioadmin minioadmin;
+      mc mb myminio/weather-bucket || true;
+      echo '[INIT] MinIO bucket weather-bucket ready ✅';
+      tail -f /dev/null
+      "
 
 
 # -----------------------------

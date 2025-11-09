@@ -2,5 +2,7 @@ origin-data/*
 kafka/data/broker1/*
 kafka/data/broker2/*
 kafka/data/broker3/*
+minio-data/*
 
 !origin-data/.gitkeep
+!minio-data/.gitkeep
