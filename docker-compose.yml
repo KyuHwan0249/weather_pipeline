@@ -5,6 +5,9 @@ services:
     volumes:
       - ./kaggle-data:/app/data/kaggle
       - ./origin-data:/app/data/output
+      - ./create-origin-data-app/main.py:/app/main.py
     environment:
       - PYTHONUNBUFFERED=1
+      - drop_interval=5
+      - row_interval=60
     restart: on-failure
