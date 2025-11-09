@@ -185,6 +185,18 @@ services:
       echo '[INIT] MinIO bucket weather-bucket ready ✅';
       tail -f /dev/null
       "
+  # -----------------------------
+  consumer-app:
+    build: ./consumer-app-minio-save
+    container_name: consumer-app-minio-save
+    depends_on:
+      kafka-init:
+        condition: service_completed_successfully
+      minio:
+        condition: service_started
+    networks:
+      - project-net
+    restart: on-failure
 
 
 # -----------------------------
