@@ -131,6 +131,7 @@ services:
     volumes:
       - ./origin-data:/app/data/origin-data
       - ./producer-app/main.py:/app/main.py
+      - ./producer-app:/app
     environment:
       - check_interval=5
     depends_on:
