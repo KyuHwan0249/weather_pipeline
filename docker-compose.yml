@@ -100,8 +100,8 @@ services:
       /opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka-1:9092,kafka-2:9092,kafka-3:9092 --delete --topic error-data || true &&
       echo '[INIT] Creating topics...' &&
       sleep 5 &&
-      /opt/kafka/bin/kafka-topics.sh --create --topic weather-data --bootstrap-server kafka-1:9092 --partitions 10 --replication-factor 3 &&
-      /opt/kafka/bin/kafka-topics.sh --create --topic error-data --bootstrap-server kafka-1:9092 --partitions 3 --replication-factor 3 &&
+      /opt/kafka/bin/kafka-topics.sh --create --topic weather-data --bootstrap-server kafka-1:9092,kafka-2:9092,kafka-3:9092 --partitions 10 --replication-factor 3 &&
+      /opt/kafka/bin/kafka-topics.sh --create --topic error-data --bootstrap-server kafka-1:9092,kafka-2:9092,kafka-3:9092 --partitions 3 --replication-factor 3 &&
       echo '[INIT] Kafka topics recreated successfully ✅' &&
       exit 0
       "
@@ -205,7 +205,7 @@ services:
   spark-master:
     build:
       context: ./spark
-    image: custom-spark:3.5
+    image: custom-spark:3.5.6
     environment:
       - SPARK_MODE=master
     ports:
@@ -217,7 +217,7 @@ services:
   spark-worker:
     build:
       context: ./spark
-    image: custom-spark:3.5
+    image: custom-spark:3.5.6
     environment:
       - SPARK_MODE=worker
       - SPARK_MASTER_URL=spark://spark-master:7077
@@ -231,12 +231,46 @@ services:
 # -----------------------------
 
   consumer-app-alarm:
-    build: ./consumer-app-alarm
+    user: "1001:1001"
+    build: 
+      context: ./consumer-app-alarm
     container_name: consumer-app-alarm
     volumes:
       - ./consumer-app-alarm/main.py:/app/main.py
+      - ./consumer-app-alarm/db:/app/db
+      - ./consumer-app-alarm/checkpoints:/app/checkpoints
     depends_on:
-      - spark-master
+      spark-master:
+        condition: service_started
+      kafka-init:
+        condition: service_completed_successfully
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: weatherdb
+      POSTGRES_USER: weather
+      POSTGRES_PASSWORD: weather123
+      SLACK_WEBHOOK_URL: ${SLACK_WEBHOOK_URL}
+    networks:
+      - project-net
+
+# -----------------------------
+# PostgreSQL
+# -----------------------------
+  postgres:
+    build:
+      context: ./postgres
+    container_name: postgres
+    restart: always
+    environment:
+      POSTGRES_USER: weather
+      POSTGRES_PASSWORD: weather123
+      POSTGRES_DB: weatherdb
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data 
+      - ./postgres/init-db:/docker-entrypoint-initdb.d
     networks:
       - project-net
 
@@ -248,3 +282,6 @@ networks:
     driver: bridge
     name: project-net
     attachable: true
+
+volumes:
+  pgdata:

@@ -1,8 +1,12 @@
+.env
 origin-data/*
 kafka/data/broker1/*
 kafka/data/broker2/*
 kafka/data/broker3/*
 minio-data/*
+consumer-app-alarm/checkpoints/*
+
 
 !origin-data/.gitkeep
 !minio-data/.gitkeep
+!consumer-app-alarm/checkpoints/.gitkeep

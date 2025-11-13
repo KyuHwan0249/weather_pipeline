@@ -1,14 +1,17 @@
-FROM bitnamilegacy/spark:3.5
+FROM bitnamilegacy/spark:3.5.6
 
+# root 권한으로 유저 생성
 USER root
 
-# ✅ Spark 실행용 유저 추가
-ARG USER_ID=1001
-RUN echo "sparkuser:x:${USER_ID}:0:sparkuser:/home:/bin/bash" >> /etc/passwd
+RUN groupadd -g 1001 spark && \
+    useradd -m -u 1001 -g 1001 sparkuser
 
-# ✅ Spark 유저 설정
-USER 1001
+# 홈 디렉토리 소유권 설정
+RUN chown -R sparkuser:spark /home/sparkuser
+
+# 실행 유저 변경
+USER sparkuser
 ENV USER=sparkuser
-ENV HOME=/home
+ENV HOME=/home/sparkuser
 
 WORKDIR /opt/bitnami/spark

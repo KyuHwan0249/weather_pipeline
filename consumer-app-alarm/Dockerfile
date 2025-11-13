@@ -1,19 +1,37 @@
 FROM python:3.12-slim
 
-WORKDIR /app
+# root
+USER root
 
-# ✅ Java 21 + ps 설치
+# 유저 생성
+RUN groupadd -g 1001 spark && \
+    useradd -m -u 1001 -g 1001 sparkuser
+
+# Java 설치
 RUN apt-get update && \
-    apt-get install -y openjdk-21-jre-headless procps && \
+    apt-get install -y openjdk-21-jre-headless procps curl && \
     rm -rf /var/lib/apt/lists/*
 
-# ✅ Spark와 호환되는 PySpark 설치
-RUN pip install pyspark==3.5.6
+# PySpark & 의존성 설치
+RUN pip install pyspark==3.5.6 psycopg2-binary requests slack-sdk
 
-# ✅ 환경변수 설정
+# Kafka jar 폴더
+RUN mkdir -p /app/jars
+
+# 환경변수
 ENV JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64
 ENV PATH=$PATH:$JAVA_HOME/bin
 
-COPY main.py .
+WORKDIR /app
 
-CMD ["python", "main.py"]
+COPY . .
+
+RUN chown -R sparkuser:spark /app
+
+# sparkuser로 실행
+USER sparkuser
+ENV USER=sparkuser
+ENV HOME=/home/sparkuser
+
+# checkpoint 삭제 후 실행
+CMD ["bash", "-c", "rm -rf /app/checkpoints/* && python /app/main.py"]
