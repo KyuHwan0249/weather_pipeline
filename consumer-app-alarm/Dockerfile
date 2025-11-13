@@ -34,4 +34,5 @@ ENV USER=sparkuser
 ENV HOME=/home/sparkuser
 
 # checkpoint 삭제 후 실행
-CMD ["bash", "-c", "rm -rf /app/checkpoints/* && python /app/main.py"]
+CMD ["bash", "-c", "rm -rf /shared-checkpoints/* && python /app/main.py"]
+

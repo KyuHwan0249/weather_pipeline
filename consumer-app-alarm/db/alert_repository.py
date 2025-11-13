@@ -20,7 +20,7 @@ def save_alert(location, alert_type, alert_reason, event_time,
     cur.execute(query, (
         location, alert_type, alert_reason,
         event_time, value, threshold,
-        slack_sent, json.dumps(raw_row)
+        slack_sent, json.dumps(raw_row, default=str)
     ))
 
     alert_id = cur.fetchone()[0]

@@ -1,12 +1,12 @@
-
 import os
-
 import json
 import requests
 from datetime import datetime
 
 from pyspark.sql import SparkSession
-from pyspark.sql.functions import col, from_json
+from pyspark.sql.functions import (
+    col, from_json, to_timestamp, window, collect_list, struct
+)
 from pyspark.sql.types import (
     StructType, StructField,
     StringType, DoubleType
@@ -15,14 +15,6 @@ from pyspark.sql.types import (
 from db.alert_repository import save_alert, update_alert_sent
 
 
-ALERT_EMOJI = {
-    "TEMP_HIGH": "🔥",
-    "TEMP_LOW": "❄️",
-    "RAIN_HEAVY": "🌧️",
-    "WIND_STRONG": "💨",
-    "DEFAULT": "⚠️"
-}
-
 ###########################################
 # CONFIG
 ###########################################
@@ -30,39 +22,37 @@ KAFKA_BOOTSTRAP = "kafka-1:9092,kafka-2:9092,kafka-3:9092"
 TOPIC_NAME = "weather-data"
 SLACK_WEBHOOK_URL = os.getenv("SLACK_WEBHOOK_URL")
 
-STREAM_INTERVAL_SECONDS = 5
-ALERT_INTERVAL_MINUTES = 10   # 10분 룰
+WINDOW_SECONDS = 60          # 1분 윈도우
+ALERT_INTERVAL_MINUTES = 30  # 30분 쿨다운
+
+
+###########################################
+# 상태 저장 (event_time 기반)
+###########################################
+last_alert_time = {}
+
+
+def should_alert(location, alert_type, event_time):
+    key = (location, alert_type)
+
+    if key in last_alert_time:
+        diff = event_time - last_alert_time[key]
+        if diff.total_seconds() < ALERT_INTERVAL_MINUTES * 60:
+            return False
+
+    last_alert_time[key] = event_time
+    return True
+
 
 ###########################################
 # Slack
 ###########################################
-def send_slack(message):
+def send_slack(payload):
     try:
-        requests.post(SLACK_WEBHOOK_URL, json={"text": message})
-        print("📨 Slack alert sent")
-    except Exception as e:
-        print("❌ Slack error:", e)
-
-###########################################
-# 상태 저장
-###########################################
-# Key = (location, alert_type)
-last_alert_time = {}
-
-###########################################
-# 중복 알람 방지 체크
-###########################################
-def should_alert(location, alert_type):
-    now = datetime.now()
-    key = (location, alert_type)
-
-    if key in last_alert_time:
-        diff = now - last_alert_time[key]
-        if diff.total_seconds() < ALERT_INTERVAL_MINUTES * 60:
-            return False
-
-    last_alert_time[key] = now
-    return True
+        res = requests.post(SLACK_WEBHOOK_URL, json={"text": payload})
+        return res.status_code == 200
+    except:
+        return False
 
 
 ###########################################
@@ -73,8 +63,6 @@ spark = (
         .appName("WeatherAlertConsumer")
         .master("spark://spark-master:7077")
         .config("spark.jars.packages", "org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.6")
-        .config("spark.executorEnv.USER", "sparkuser")
-        .config("spark.driver.extraJavaOptions", "-Duser.name=sparkuser")
         .getOrCreate()
 )
 spark.sparkContext.setLogLevel("WARN")
@@ -95,7 +83,7 @@ schema = StructType([
 
 
 ###########################################
-# Kafka Stream
+# Kafka → Parsed Stream
 ###########################################
 raw_df = (
     spark.readStream
@@ -110,61 +98,49 @@ parsed_df = (
     raw_df.selectExpr("CAST(value AS STRING)")
           .select(from_json(col("value"), schema).alias("data"))
           .select("data.*")
+          .withColumn("event_time", to_timestamp(col("Date_Time")))
 )
 
+
 ###########################################
-# Alert 조건별 식별
+# Event-time Window 1분 + Watermark 2분
+###########################################
+windowed_df = (
+    parsed_df
+        .withWatermark("event_time", "2 minutes")
+        .groupBy(
+            window(col("event_time"), f"{WINDOW_SECONDS} seconds"),
+            col("Location")
+        )
+        .agg(collect_list(struct("*")).alias("rows"))
+)
+
+
+###########################################
+# Alert Logic
 ###########################################
 def detect_alert_types(row):
     alerts = []
-
     t = row["Temperature_C"]
     p = row["Precipitation_mm"]
     w = row["Wind_Speed_kmh"]
 
-    # 온도 높은 경우
     if t is not None and t >= 28:
-        alerts.append((
-            "TEMP_HIGH",
-            f"Temperature {t}°C >= 28°C",
-            t,      # value
-            28.0    # threshold
-        ))
-
-    # 온도 낮은 경우
+        alerts.append(("TEMP_HIGH", f"Temperature {t}°C >= 28°C", t, 28.0))
     if t is not None and t <= -5:
-        alerts.append((
-            "TEMP_LOW",
-            f"Temperature {t}°C <= -5°C",
-            t,
-            -5.0
-        ))
-
-    # 강수량
+        alerts.append(("TEMP_LOW", f"Temperature {t}°C <= -5°C", t, -5.0))
     if p is not None and p >= 8:
-        alerts.append((
-            "RAIN_HEAVY",
-            f"Rainfall {p}mm >= 8mm",
-            p,
-            8.0
-        ))
-
-    # 풍속
+        alerts.append(("RAIN_HEAVY", f"Rainfall {p}mm >= 8mm", p, 8.0))
     if w is not None and w >= 25:
-        alerts.append((
-            "WIND_STRONG",
-            f"Wind {w} km/h >= 25 km/h",
-            w,
-            25.0
-        ))
+        alerts.append(("WIND_STRONG", f"Wind {w} km/h >= 25 km/h", w, 25.0))
 
     return alerts
 
 
 ###########################################
-# foreachBatch
+# foreachBatch (Window 단위 처리)
 ###########################################
-def process_batch(df, batch_id):
+def process_window_batch(df, batch_id):
     rows = df.collect()
     if not rows:
         print(f"[BATCH {batch_id}] No rows")
@@ -172,66 +148,68 @@ def process_batch(df, batch_id):
 
     for r in rows:
         loc = r["Location"]
-        ts = r["Date_Time"]
+        window_start = r["window"]["start"]
+        window_end = r["window"]["end"]
+        record_list = r["rows"]
 
-        triggered_alerts = detect_alert_types(r)
+        for raw_row in record_list:
+            raw_dict = raw_row.asDict()
+            event_time = raw_dict["event_time"]
 
-        for alert_type, reason, value, threshold in triggered_alerts:
+            # Alert 체크
+            triggered = detect_alert_types(raw_dict)
 
-            # 🔥 쿨다운이면 아무것도 하지 않음 (DB 저장 X)
-            if not should_alert(loc, alert_type):
-                print(f"🔁 Skipped (cooldown): {loc} / {alert_type}")
-                continue
+            for alert_type, reason, value, threshold in triggered:
 
-            alert_id = save_alert(
-                location=loc,
-                alert_type=alert_type,
-                alert_reason=reason,
-                event_time=ts,
-                value=value,
-                threshold=threshold,
-                raw_row=r.asDict(),  # 전체 row를 JSONB로 저장
-                slack_sent=False
-            )
+                # event_time 기반 쿨다운
+                if not should_alert(loc, alert_type, event_time):
+                    continue
 
-            print(f"📝 DB inserted alert_id={alert_id} / {loc} / {alert_type}")
+                # DB 저장
+                alert_id = save_alert(
+                    location=loc,
+                    alert_type=alert_type,
+                    alert_reason=reason,
+                    event_time=event_time,
+                    value=value,
+                    threshold=threshold,
+                    raw_row=raw_dict,
+                    slack_sent=False
+                )
 
-            # ---------------------------
-            # 2️⃣ Slack 전송
-            # ---------------------------
-            emoji = ALERT_EMOJI.get(alert_type, ALERT_EMOJI["DEFAULT"])
-            success = False
+                emoji = {
+                    "TEMP_HIGH": "🔥",
+                    "TEMP_LOW": "❄️",
+                    "RAIN_HEAVY": "🌧️",
+                    "WIND_STRONG": "💨",
+                }.get(alert_type, "⚠️")
 
-            try:
-                res = requests.post(SLACK_WEBHOOK_URL, json={"text": 
+                # Slack Payload
+                payload = (
                     f"{emoji} *{alert_type.replace('_', ' ')} Alert*\n"
                     f"Location: {loc}\n"
                     f"{reason}\n"
-                    f"Time: {ts}"
-                })
-                success = (res.status_code == 200)
-            except Exception as e:
-                print(f"❌ Slack send error: {e}")
-                success = False
+                    f"Event Time: {event_time}\n"
+                    f"Window: {window_start} ~ {window_end}"
+                )
 
-            # ---------------------------
-            # 3️⃣ Slack 성공 → DB UPDATE
-            # ---------------------------
-            if success:
-                update_alert_sent(alert_id)
-                print(f"🚨 Alert sent + DB updated: {loc} / {alert_type}")
-            else:
-                print(f"⚠️ Slack FAILED (DB remains unsent): {loc} / {alert_type}")
+                success = send_slack(payload)
+
+                if success:
+                    update_alert_sent(alert_id)
+                    print(f"🚨 Alert sent + updated: {loc} {alert_type}")
+                else:
+                    print(f"⚠ Slack failed: {loc} {alert_type}")
+
 
 ###########################################
 # Streaming 실행
 ###########################################
 query = (
-    parsed_df.writeStream
-        .foreachBatch(process_batch)
-        .trigger(processingTime=f"{STREAM_INTERVAL_SECONDS} seconds")
+    windowed_df.writeStream
+        .foreachBatch(process_window_batch)
         .outputMode("update")
-        .option("checkpointLocation", "/app/checkpoints/weather-condition-alert")
+        .option("checkpointLocation", "/shared-checkpoints/weather-alert")
         .start()
 )
 
