@@ -199,6 +199,46 @@ services:
       - project-net
     restart: on-failure
 
+  # -----------------------------
+  # Spark Cluster
+  # -----------------------------
+  spark-master:
+    build:
+      context: ./spark
+    image: custom-spark:3.5
+    environment:
+      - SPARK_MODE=master
+    ports:
+      - "8081:8080"
+      - "7077:7077"
+    networks:
+      - project-net
+
+  spark-worker:
+    build:
+      context: ./spark
+    image: custom-spark:3.5
+    environment:
+      - SPARK_MODE=worker
+      - SPARK_MASTER_URL=spark://spark-master:7077
+    depends_on:
+      - spark-master
+    networks:
+      - project-net
+
+# -----------------------------
+# Consumer-App-Alarm
+# -----------------------------
+
+  consumer-app-alarm:
+    build: ./consumer-app-alarm
+    container_name: consumer-app-alarm
+    volumes:
+      - ./consumer-app-alarm/main.py:/app/main.py
+    depends_on:
+      - spark-master
+    networks:
+      - project-net
 
 # -----------------------------
 # 공용 네트워크
