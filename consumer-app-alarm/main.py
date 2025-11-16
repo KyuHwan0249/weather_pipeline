@@ -123,14 +123,14 @@ def detect_alert_types(row):
     p = row["Precipitation_mm"]
     w = row["Wind_Speed_kmh"]
 
-    if t is not None and t >= 28:
-        alerts.append(("TEMP_HIGH", f"Temperature {t}°C >= 28°C", t, 28.0))
-    if t is not None and t <= -5:
-        alerts.append(("TEMP_LOW", f"Temperature {t}°C <= -5°C", t, -5.0))
-    if p is not None and p >= 8:
-        alerts.append(("RAIN_HEAVY", f"Rainfall {p}mm >= 8mm", p, 8.0))
-    if w is not None and w >= 25:
-        alerts.append(("WIND_STRONG", f"Wind {w} km/h >= 25 km/h", w, 25.0))
+    if t is not None and t >= 31:
+        alerts.append(("TEMP_HIGH", f"Temperature {t}°C >= 31°C", t, 31.0))
+    if t is not None and t <= -10:
+        alerts.append(("TEMP_LOW", f"Temperature {t}°C <= -10°C", t, -10.0))
+    if p is not None and p >= 11:
+        alerts.append(("RAIN_HEAVY", f"Rainfall {p}mm >= 11mm", p, 11.0))
+    if w is not None and w >= 35:
+        alerts.append(("WIND_STRONG", f"Wind {w} km/h >= 35 km/h", w, 35.0))
 
     return alerts
 
