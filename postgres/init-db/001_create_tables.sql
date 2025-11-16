@@ -31,6 +31,8 @@ CREATE TABLE error_weather_data (
     file_name VARCHAR(255),
     retry_count INT DEFAULT 0, -- 재처리 관련 (옵션)
     processing_status VARCHAR(20) DEFAULT 'NEW',
+    slack_sent BOOLEAN DEFAULT false,
+    slack_sent_at TIMESTAMP NULL,
     created_at TIMESTAMP DEFAULT NOW() -- 에러 발생 시간
 );
 

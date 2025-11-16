@@ -1,0 +1,362 @@
+[2025-11-16T04:16:00.335+0000] {taskinstance.py:1957} INFO - Dependencies all met for dep_context=non-requeueable deps ti=<TaskInstance: error_alert_sensor.wait_for_error scheduled__2025-11-16T04:14:00+00:00 [queued]>
+[2025-11-16T04:16:00.340+0000] {taskinstance.py:1957} INFO - Dependencies all met for dep_context=requeueable deps ti=<TaskInstance: error_alert_sensor.wait_for_error scheduled__2025-11-16T04:14:00+00:00 [queued]>
+[2025-11-16T04:16:00.341+0000] {taskinstance.py:2171} INFO - Starting attempt 1 of 2
+[2025-11-16T04:16:00.352+0000] {taskinstance.py:2192} INFO - Executing <Task(SqlSensor): wait_for_error> on 2025-11-16 04:14:00+00:00
+[2025-11-16T04:16:00.355+0000] {standard_task_runner.py:60} INFO - Started process 269 to run task
+[2025-11-16T04:16:00.358+0000] {standard_task_runner.py:87} INFO - Running: ['airflow', 'tasks', 'run', 'error_alert_sensor', 'wait_for_error', 'scheduled__2025-11-16T04:14:00+00:00', '--job-id', '14', '--raw', '--subdir', 'DAGS_FOLDER/error_alert_sensor.py', '--cfg-path', '/tmp/tmp7s5zfv08']
+[2025-11-16T04:16:00.361+0000] {standard_task_runner.py:88} INFO - Job 14: Subtask wait_for_error
+[2025-11-16T04:16:00.415+0000] {task_command.py:423} INFO - Running <TaskInstance: error_alert_sensor.wait_for_error scheduled__2025-11-16T04:14:00+00:00 [running]> on host 076fa5999516
+[2025-11-16T04:16:00.497+0000] {taskinstance.py:2481} INFO - Exporting env vars: AIRFLOW_CTX_DAG_OWNER='airflow' AIRFLOW_CTX_DAG_ID='error_alert_sensor' AIRFLOW_CTX_TASK_ID='wait_for_error' AIRFLOW_CTX_EXECUTION_DATE='2025-11-16T04:14:00+00:00' AIRFLOW_CTX_TRY_NUMBER='1' AIRFLOW_CTX_DAG_RUN_ID='scheduled__2025-11-16T04:14:00+00:00'
+[2025-11-16T04:16:00.498+0000] {crypto.py:82} WARNING - empty cryptography key - values will not be stored encrypted.
+[2025-11-16T04:16:00.498+0000] {base.py:83} INFO - Using connection ID 'postgres_default' for task execution.
+[2025-11-16T04:16:00.500+0000] {sql.py:95} INFO - Poking: 
+SELECT id FROM error_weather_data
+WHERE processing_status = 'NEW'
+LIMIT 1; (with parameters None)
+[2025-11-16T04:16:00.500+0000] {base.py:83} INFO - Using connection ID 'postgres_default' for task execution.
+[2025-11-16T04:16:00.507+0000] {sql.py:432} INFO - Running statement: 
+SELECT id FROM error_weather_data
+WHERE processing_status = 'NEW'
+LIMIT 1;, parameters: None
+[2025-11-16T04:16:00.508+0000] {sql.py:441} INFO - Rows affected: 0
+[2025-11-16T04:16:21.499+0000] {base.py:83} INFO - Using connection ID 'postgres_default' for task execution.
+[2025-11-16T04:16:21.499+0000] {sql.py:95} INFO - Poking: 
+SELECT id FROM error_weather_data
+WHERE processing_status = 'NEW'
+LIMIT 1; (with parameters None)
+[2025-11-16T04:16:21.500+0000] {base.py:83} INFO - Using connection ID 'postgres_default' for task execution.
+[2025-11-16T04:16:21.506+0000] {sql.py:432} INFO - Running statement: 
+SELECT id FROM error_weather_data
+WHERE processing_status = 'NEW'
+LIMIT 1;, parameters: None
+[2025-11-16T04:16:21.508+0000] {sql.py:441} INFO - Rows affected: 0
+[2025-11-16T04:16:42.521+0000] {base.py:83} INFO - Using connection ID 'postgres_default' for task execution.
+[2025-11-16T04:16:42.522+0000] {sql.py:95} INFO - Poking: 
+SELECT id FROM error_weather_data
+WHERE processing_status = 'NEW'
+LIMIT 1; (with parameters None)
+[2025-11-16T04:16:42.524+0000] {base.py:83} INFO - Using connection ID 'postgres_default' for task execution.
+[2025-11-16T04:16:42.553+0000] {sql.py:432} INFO - Running statement: 
+SELECT id FROM error_weather_data
+WHERE processing_status = 'NEW'
+LIMIT 1;, parameters: None
+[2025-11-16T04:16:42.557+0000] {sql.py:441} INFO - Rows affected: 0
+[2025-11-16T04:17:02.575+0000] {base.py:83} INFO - Using connection ID 'postgres_default' for task execution.
+[2025-11-16T04:17:02.575+0000] {sql.py:95} INFO - Poking: 
+SELECT id FROM error_weather_data
+WHERE processing_status = 'NEW'
+LIMIT 1; (with parameters None)
+[2025-11-16T04:17:02.576+0000] {base.py:83} INFO - Using connection ID 'postgres_default' for task execution.
+[2025-11-16T04:17:02.582+0000] {sql.py:432} INFO - Running statement: 
+SELECT id FROM error_weather_data
+WHERE processing_status = 'NEW'
+LIMIT 1;, parameters: None
+[2025-11-16T04:17:02.583+0000] {sql.py:441} INFO - Rows affected: 0
+[2025-11-16T04:17:23.575+0000] {base.py:83} INFO - Using connection ID 'postgres_default' for task execution.
+[2025-11-16T04:17:23.576+0000] {sql.py:95} INFO - Poking: 
+SELECT id FROM error_weather_data
+WHERE processing_status = 'NEW'
+LIMIT 1; (with parameters None)
+[2025-11-16T04:17:23.576+0000] {base.py:83} INFO - Using connection ID 'postgres_default' for task execution.
+[2025-11-16T04:17:23.582+0000] {sql.py:432} INFO - Running statement: 
+SELECT id FROM error_weather_data
+WHERE processing_status = 'NEW'
+LIMIT 1;, parameters: None
+[2025-11-16T04:17:23.583+0000] {sql.py:441} INFO - Rows affected: 0
+[2025-11-16T04:17:44.589+0000] {base.py:83} INFO - Using connection ID 'postgres_default' for task execution.
+[2025-11-16T04:17:44.589+0000] {sql.py:95} INFO - Poking: 
+SELECT id FROM error_weather_data
+WHERE processing_status = 'NEW'
+LIMIT 1; (with parameters None)
+[2025-11-16T04:17:44.589+0000] {base.py:83} INFO - Using connection ID 'postgres_default' for task execution.
+[2025-11-16T04:17:44.595+0000] {sql.py:432} INFO - Running statement: 
+SELECT id FROM error_weather_data
+WHERE processing_status = 'NEW'
+LIMIT 1;, parameters: None
+[2025-11-16T04:17:44.596+0000] {sql.py:441} INFO - Rows affected: 0
+[2025-11-16T04:18:04.609+0000] {base.py:83} INFO - Using connection ID 'postgres_default' for task execution.
+[2025-11-16T04:18:04.610+0000] {sql.py:95} INFO - Poking: 
+SELECT id FROM error_weather_data
+WHERE processing_status = 'NEW'
+LIMIT 1; (with parameters None)
+[2025-11-16T04:18:04.610+0000] {base.py:83} INFO - Using connection ID 'postgres_default' for task execution.
+[2025-11-16T04:18:04.619+0000] {sql.py:432} INFO - Running statement: 
+SELECT id FROM error_weather_data
+WHERE processing_status = 'NEW'
+LIMIT 1;, parameters: None
+[2025-11-16T04:18:04.621+0000] {sql.py:441} INFO - Rows affected: 0
+[2025-11-16T04:18:25.601+0000] {base.py:83} INFO - Using connection ID 'postgres_default' for task execution.
+[2025-11-16T04:18:25.603+0000] {sql.py:95} INFO - Poking: 
+SELECT id FROM error_weather_data
+WHERE processing_status = 'NEW'
+LIMIT 1; (with parameters None)
+[2025-11-16T04:18:25.604+0000] {base.py:83} INFO - Using connection ID 'postgres_default' for task execution.
+[2025-11-16T04:18:25.631+0000] {sql.py:432} INFO - Running statement: 
+SELECT id FROM error_weather_data
+WHERE processing_status = 'NEW'
+LIMIT 1;, parameters: None
+[2025-11-16T04:18:25.635+0000] {sql.py:441} INFO - Rows affected: 0
+[2025-11-16T04:18:46.656+0000] {base.py:83} INFO - Using connection ID 'postgres_default' for task execution.
+[2025-11-16T04:18:46.657+0000] {sql.py:95} INFO - Poking: 
+SELECT id FROM error_weather_data
+WHERE processing_status = 'NEW'
+LIMIT 1; (with parameters None)
+[2025-11-16T04:18:46.657+0000] {base.py:83} INFO - Using connection ID 'postgres_default' for task execution.
+[2025-11-16T04:18:46.663+0000] {sql.py:432} INFO - Running statement: 
+SELECT id FROM error_weather_data
+WHERE processing_status = 'NEW'
+LIMIT 1;, parameters: None
+[2025-11-16T04:18:46.664+0000] {sql.py:441} INFO - Rows affected: 0
+[2025-11-16T04:19:06.683+0000] {base.py:83} INFO - Using connection ID 'postgres_default' for task execution.
+[2025-11-16T04:19:06.684+0000] {sql.py:95} INFO - Poking: 
+SELECT id FROM error_weather_data
+WHERE processing_status = 'NEW'
+LIMIT 1; (with parameters None)
+[2025-11-16T04:19:06.685+0000] {base.py:83} INFO - Using connection ID 'postgres_default' for task execution.
+[2025-11-16T04:19:06.708+0000] {sql.py:432} INFO - Running statement: 
+SELECT id FROM error_weather_data
+WHERE processing_status = 'NEW'
+LIMIT 1;, parameters: None
+[2025-11-16T04:19:06.712+0000] {sql.py:441} INFO - Rows affected: 0
+[2025-11-16T04:19:27.688+0000] {base.py:83} INFO - Using connection ID 'postgres_default' for task execution.
+[2025-11-16T04:19:27.689+0000] {sql.py:95} INFO - Poking: 
+SELECT id FROM error_weather_data
+WHERE processing_status = 'NEW'
+LIMIT 1; (with parameters None)
+[2025-11-16T04:19:27.689+0000] {base.py:83} INFO - Using connection ID 'postgres_default' for task execution.
+[2025-11-16T04:19:27.695+0000] {sql.py:432} INFO - Running statement: 
+SELECT id FROM error_weather_data
+WHERE processing_status = 'NEW'
+LIMIT 1;, parameters: None
+[2025-11-16T04:19:27.696+0000] {sql.py:441} INFO - Rows affected: 0
+[2025-11-16T04:19:48.703+0000] {base.py:83} INFO - Using connection ID 'postgres_default' for task execution.
+[2025-11-16T04:19:48.703+0000] {sql.py:95} INFO - Poking: 
+SELECT id FROM error_weather_data
+WHERE processing_status = 'NEW'
+LIMIT 1; (with parameters None)
+[2025-11-16T04:19:48.704+0000] {base.py:83} INFO - Using connection ID 'postgres_default' for task execution.
+[2025-11-16T04:19:48.710+0000] {sql.py:432} INFO - Running statement: 
+SELECT id FROM error_weather_data
+WHERE processing_status = 'NEW'
+LIMIT 1;, parameters: None
+[2025-11-16T04:19:48.711+0000] {sql.py:441} INFO - Rows affected: 0
+[2025-11-16T04:20:08.721+0000] {base.py:83} INFO - Using connection ID 'postgres_default' for task execution.
+[2025-11-16T04:20:08.721+0000] {sql.py:95} INFO - Poking: 
+SELECT id FROM error_weather_data
+WHERE processing_status = 'NEW'
+LIMIT 1; (with parameters None)
+[2025-11-16T04:20:08.722+0000] {base.py:83} INFO - Using connection ID 'postgres_default' for task execution.
+[2025-11-16T04:20:08.742+0000] {sql.py:432} INFO - Running statement: 
+SELECT id FROM error_weather_data
+WHERE processing_status = 'NEW'
+LIMIT 1;, parameters: None
+[2025-11-16T04:20:08.745+0000] {sql.py:441} INFO - Rows affected: 0
+[2025-11-16T04:20:29.722+0000] {base.py:83} INFO - Using connection ID 'postgres_default' for task execution.
+[2025-11-16T04:20:29.723+0000] {sql.py:95} INFO - Poking: 
+SELECT id FROM error_weather_data
+WHERE processing_status = 'NEW'
+LIMIT 1; (with parameters None)
+[2025-11-16T04:20:29.725+0000] {base.py:83} INFO - Using connection ID 'postgres_default' for task execution.
+[2025-11-16T04:20:29.755+0000] {sql.py:432} INFO - Running statement: 
+SELECT id FROM error_weather_data
+WHERE processing_status = 'NEW'
+LIMIT 1;, parameters: None
+[2025-11-16T04:20:29.758+0000] {sql.py:441} INFO - Rows affected: 0
+[2025-11-16T04:20:50.761+0000] {base.py:83} INFO - Using connection ID 'postgres_default' for task execution.
+[2025-11-16T04:20:50.762+0000] {sql.py:95} INFO - Poking: 
+SELECT id FROM error_weather_data
+WHERE processing_status = 'NEW'
+LIMIT 1; (with parameters None)
+[2025-11-16T04:20:50.764+0000] {base.py:83} INFO - Using connection ID 'postgres_default' for task execution.
+[2025-11-16T04:20:50.786+0000] {sql.py:432} INFO - Running statement: 
+SELECT id FROM error_weather_data
+WHERE processing_status = 'NEW'
+LIMIT 1;, parameters: None
+[2025-11-16T04:20:50.789+0000] {sql.py:441} INFO - Rows affected: 0
+[2025-11-16T04:21:10.808+0000] {base.py:83} INFO - Using connection ID 'postgres_default' for task execution.
+[2025-11-16T04:21:10.809+0000] {sql.py:95} INFO - Poking: 
+SELECT id FROM error_weather_data
+WHERE processing_status = 'NEW'
+LIMIT 1; (with parameters None)
+[2025-11-16T04:21:10.809+0000] {base.py:83} INFO - Using connection ID 'postgres_default' for task execution.
+[2025-11-16T04:21:10.815+0000] {sql.py:432} INFO - Running statement: 
+SELECT id FROM error_weather_data
+WHERE processing_status = 'NEW'
+LIMIT 1;, parameters: None
+[2025-11-16T04:21:10.816+0000] {sql.py:441} INFO - Rows affected: 0
+[2025-11-16T04:21:31.818+0000] {base.py:83} INFO - Using connection ID 'postgres_default' for task execution.
+[2025-11-16T04:21:31.818+0000] {sql.py:95} INFO - Poking: 
+SELECT id FROM error_weather_data
+WHERE processing_status = 'NEW'
+LIMIT 1; (with parameters None)
+[2025-11-16T04:21:31.819+0000] {base.py:83} INFO - Using connection ID 'postgres_default' for task execution.
+[2025-11-16T04:21:31.825+0000] {sql.py:432} INFO - Running statement: 
+SELECT id FROM error_weather_data
+WHERE processing_status = 'NEW'
+LIMIT 1;, parameters: None
+[2025-11-16T04:21:31.826+0000] {sql.py:441} INFO - Rows affected: 0
+[2025-11-16T04:21:52.814+0000] {base.py:83} INFO - Using connection ID 'postgres_default' for task execution.
+[2025-11-16T04:21:52.815+0000] {sql.py:95} INFO - Poking: 
+SELECT id FROM error_weather_data
+WHERE processing_status = 'NEW'
+LIMIT 1; (with parameters None)
+[2025-11-16T04:21:52.815+0000] {base.py:83} INFO - Using connection ID 'postgres_default' for task execution.
+[2025-11-16T04:21:52.821+0000] {sql.py:432} INFO - Running statement: 
+SELECT id FROM error_weather_data
+WHERE processing_status = 'NEW'
+LIMIT 1;, parameters: None
+[2025-11-16T04:21:52.822+0000] {sql.py:441} INFO - Rows affected: 0
+[2025-11-16T04:22:12.843+0000] {base.py:83} INFO - Using connection ID 'postgres_default' for task execution.
+[2025-11-16T04:22:12.843+0000] {sql.py:95} INFO - Poking: 
+SELECT id FROM error_weather_data
+WHERE processing_status = 'NEW'
+LIMIT 1; (with parameters None)
+[2025-11-16T04:22:12.843+0000] {base.py:83} INFO - Using connection ID 'postgres_default' for task execution.
+[2025-11-16T04:22:12.849+0000] {sql.py:432} INFO - Running statement: 
+SELECT id FROM error_weather_data
+WHERE processing_status = 'NEW'
+LIMIT 1;, parameters: None
+[2025-11-16T04:22:12.850+0000] {sql.py:441} INFO - Rows affected: 0
+[2025-11-16T04:22:33.847+0000] {base.py:83} INFO - Using connection ID 'postgres_default' for task execution.
+[2025-11-16T04:22:33.847+0000] {sql.py:95} INFO - Poking: 
+SELECT id FROM error_weather_data
+WHERE processing_status = 'NEW'
+LIMIT 1; (with parameters None)
+[2025-11-16T04:22:33.848+0000] {base.py:83} INFO - Using connection ID 'postgres_default' for task execution.
+[2025-11-16T04:22:33.868+0000] {sql.py:432} INFO - Running statement: 
+SELECT id FROM error_weather_data
+WHERE processing_status = 'NEW'
+LIMIT 1;, parameters: None
+[2025-11-16T04:22:33.871+0000] {sql.py:441} INFO - Rows affected: 0
+[2025-11-16T04:22:54.872+0000] {base.py:83} INFO - Using connection ID 'postgres_default' for task execution.
+[2025-11-16T04:22:54.873+0000] {sql.py:95} INFO - Poking: 
+SELECT id FROM error_weather_data
+WHERE processing_status = 'NEW'
+LIMIT 1; (with parameters None)
+[2025-11-16T04:22:54.873+0000] {base.py:83} INFO - Using connection ID 'postgres_default' for task execution.
+[2025-11-16T04:22:54.880+0000] {sql.py:432} INFO - Running statement: 
+SELECT id FROM error_weather_data
+WHERE processing_status = 'NEW'
+LIMIT 1;, parameters: None
+[2025-11-16T04:22:54.881+0000] {sql.py:441} INFO - Rows affected: 0
+[2025-11-16T04:23:14.888+0000] {base.py:83} INFO - Using connection ID 'postgres_default' for task execution.
+[2025-11-16T04:23:14.889+0000] {sql.py:95} INFO - Poking: 
+SELECT id FROM error_weather_data
+WHERE processing_status = 'NEW'
+LIMIT 1; (with parameters None)
+[2025-11-16T04:23:14.889+0000] {base.py:83} INFO - Using connection ID 'postgres_default' for task execution.
+[2025-11-16T04:23:14.896+0000] {sql.py:432} INFO - Running statement: 
+SELECT id FROM error_weather_data
+WHERE processing_status = 'NEW'
+LIMIT 1;, parameters: None
+[2025-11-16T04:23:14.897+0000] {sql.py:441} INFO - Rows affected: 0
+[2025-11-16T04:23:35.863+0000] {base.py:83} INFO - Using connection ID 'postgres_default' for task execution.
+[2025-11-16T04:23:35.863+0000] {sql.py:95} INFO - Poking: 
+SELECT id FROM error_weather_data
+WHERE processing_status = 'NEW'
+LIMIT 1; (with parameters None)
+[2025-11-16T04:23:35.863+0000] {base.py:83} INFO - Using connection ID 'postgres_default' for task execution.
+[2025-11-16T04:23:35.869+0000] {sql.py:432} INFO - Running statement: 
+SELECT id FROM error_weather_data
+WHERE processing_status = 'NEW'
+LIMIT 1;, parameters: None
+[2025-11-16T04:23:35.870+0000] {sql.py:441} INFO - Rows affected: 0
+[2025-11-16T04:23:56.865+0000] {base.py:83} INFO - Using connection ID 'postgres_default' for task execution.
+[2025-11-16T04:23:56.865+0000] {sql.py:95} INFO - Poking: 
+SELECT id FROM error_weather_data
+WHERE processing_status = 'NEW'
+LIMIT 1; (with parameters None)
+[2025-11-16T04:23:56.865+0000] {base.py:83} INFO - Using connection ID 'postgres_default' for task execution.
+[2025-11-16T04:23:56.872+0000] {sql.py:432} INFO - Running statement: 
+SELECT id FROM error_weather_data
+WHERE processing_status = 'NEW'
+LIMIT 1;, parameters: None
+[2025-11-16T04:23:56.873+0000] {sql.py:441} INFO - Rows affected: 0
+[2025-11-16T04:24:16.891+0000] {base.py:83} INFO - Using connection ID 'postgres_default' for task execution.
+[2025-11-16T04:24:16.892+0000] {sql.py:95} INFO - Poking: 
+SELECT id FROM error_weather_data
+WHERE processing_status = 'NEW'
+LIMIT 1; (with parameters None)
+[2025-11-16T04:24:16.894+0000] {base.py:83} INFO - Using connection ID 'postgres_default' for task execution.
+[2025-11-16T04:24:16.922+0000] {sql.py:432} INFO - Running statement: 
+SELECT id FROM error_weather_data
+WHERE processing_status = 'NEW'
+LIMIT 1;, parameters: None
+[2025-11-16T04:24:16.926+0000] {sql.py:441} INFO - Rows affected: 0
+[2025-11-16T04:24:37.890+0000] {base.py:83} INFO - Using connection ID 'postgres_default' for task execution.
+[2025-11-16T04:24:37.891+0000] {sql.py:95} INFO - Poking: 
+SELECT id FROM error_weather_data
+WHERE processing_status = 'NEW'
+LIMIT 1; (with parameters None)
+[2025-11-16T04:24:37.891+0000] {base.py:83} INFO - Using connection ID 'postgres_default' for task execution.
+[2025-11-16T04:24:37.897+0000] {sql.py:432} INFO - Running statement: 
+SELECT id FROM error_weather_data
+WHERE processing_status = 'NEW'
+LIMIT 1;, parameters: None
+[2025-11-16T04:24:37.898+0000] {sql.py:441} INFO - Rows affected: 0
+[2025-11-16T04:24:58.884+0000] {base.py:83} INFO - Using connection ID 'postgres_default' for task execution.
+[2025-11-16T04:24:58.885+0000] {sql.py:95} INFO - Poking: 
+SELECT id FROM error_weather_data
+WHERE processing_status = 'NEW'
+LIMIT 1; (with parameters None)
+[2025-11-16T04:24:58.885+0000] {base.py:83} INFO - Using connection ID 'postgres_default' for task execution.
+[2025-11-16T04:24:58.892+0000] {sql.py:432} INFO - Running statement: 
+SELECT id FROM error_weather_data
+WHERE processing_status = 'NEW'
+LIMIT 1;, parameters: None
+[2025-11-16T04:24:58.893+0000] {sql.py:441} INFO - Rows affected: 0
+[2025-11-16T04:25:18.903+0000] {base.py:83} INFO - Using connection ID 'postgres_default' for task execution.
+[2025-11-16T04:25:18.904+0000] {sql.py:95} INFO - Poking: 
+SELECT id FROM error_weather_data
+WHERE processing_status = 'NEW'
+LIMIT 1; (with parameters None)
+[2025-11-16T04:25:18.905+0000] {base.py:83} INFO - Using connection ID 'postgres_default' for task execution.
+[2025-11-16T04:25:18.924+0000] {sql.py:432} INFO - Running statement: 
+SELECT id FROM error_weather_data
+WHERE processing_status = 'NEW'
+LIMIT 1;, parameters: None
+[2025-11-16T04:25:18.927+0000] {sql.py:441} INFO - Rows affected: 0
+[2025-11-16T04:25:39.931+0000] {base.py:83} INFO - Using connection ID 'postgres_default' for task execution.
+[2025-11-16T04:25:39.931+0000] {sql.py:95} INFO - Poking: 
+SELECT id FROM error_weather_data
+WHERE processing_status = 'NEW'
+LIMIT 1; (with parameters None)
+[2025-11-16T04:25:39.931+0000] {base.py:83} INFO - Using connection ID 'postgres_default' for task execution.
+[2025-11-16T04:25:39.937+0000] {sql.py:432} INFO - Running statement: 
+SELECT id FROM error_weather_data
+WHERE processing_status = 'NEW'
+LIMIT 1;, parameters: None
+[2025-11-16T04:25:39.938+0000] {sql.py:441} INFO - Rows affected: 0
+[2025-11-16T04:26:00.905+0000] {base.py:83} INFO - Using connection ID 'postgres_default' for task execution.
+[2025-11-16T04:26:00.906+0000] {sql.py:95} INFO - Poking: 
+SELECT id FROM error_weather_data
+WHERE processing_status = 'NEW'
+LIMIT 1; (with parameters None)
+[2025-11-16T04:26:00.906+0000] {base.py:83} INFO - Using connection ID 'postgres_default' for task execution.
+[2025-11-16T04:26:00.913+0000] {sql.py:432} INFO - Running statement: 
+SELECT id FROM error_weather_data
+WHERE processing_status = 'NEW'
+LIMIT 1;, parameters: None
+[2025-11-16T04:26:00.914+0000] {sql.py:441} INFO - Rows affected: 0
+[2025-11-16T04:26:20.932+0000] {base.py:83} INFO - Using connection ID 'postgres_default' for task execution.
+[2025-11-16T04:26:20.932+0000] {sql.py:95} INFO - Poking: 
+SELECT id FROM error_weather_data
+WHERE processing_status = 'NEW'
+LIMIT 1; (with parameters None)
+[2025-11-16T04:26:20.932+0000] {base.py:83} INFO - Using connection ID 'postgres_default' for task execution.
+[2025-11-16T04:26:20.939+0000] {sql.py:432} INFO - Running statement: 
+SELECT id FROM error_weather_data
+WHERE processing_status = 'NEW'
+LIMIT 1;, parameters: None
+[2025-11-16T04:26:20.940+0000] {sql.py:441} INFO - Rows affected: 0
+[2025-11-16T04:26:20.941+0000] {taskinstance.py:2699} ERROR - Task failed with exception
+Traceback (most recent call last):
+  File "/home/airflow/.local/lib/python3.8/site-packages/airflow/models/taskinstance.py", line 433, in _execute_task
+    result = execute_callable(context=context, **execute_callable_kwargs)
+  File "/home/airflow/.local/lib/python3.8/site-packages/airflow/sensors/base.py", line 280, in execute
+    raise AirflowSensorTimeout(message)
+airflow.exceptions.AirflowSensorTimeout: Sensor has timed out; run duration of 600.9233193289983 seconds exceeds the specified timeout of 600.0.
+[2025-11-16T04:26:20.954+0000] {taskinstance.py:1138} INFO - Immediate failure requested. Marking task as FAILED. dag_id=error_alert_sensor, task_id=wait_for_error, execution_date=20251116T041400, start_date=20251116T041600, end_date=20251116T042620
+[2025-11-16T04:26:20.968+0000] {standard_task_runner.py:107} ERROR - Failed to execute job 14 for task wait_for_error (Sensor has timed out; run duration of 600.9233193289983 seconds exceeds the specified timeout of 600.0.; 269)
+[2025-11-16T04:26:21.000+0000] {local_task_job_runner.py:234} INFO - Task exited with return code 1
+[2025-11-16T04:26:21.026+0000] {taskinstance.py:3281} INFO - 0 downstream tasks scheduled from follow-on schedule check

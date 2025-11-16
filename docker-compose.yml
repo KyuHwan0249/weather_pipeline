@@ -1,5 +1,10 @@
 version: "3.9"
 
+x-airflow-build: &airflow-build
+  build:
+    context: ./airflow
+  image: custom-airflow:latest
+
 services:
   create-origin-data-app:
     build: ./create-origin-data-app
@@ -277,6 +282,88 @@ services:
       - ./postgres/init-db:/docker-entrypoint-initdb.d
     networks:
       - project-net
+
+# -----------------------------
+# Airflow
+# -----------------------------
+  airflow-init:
+    <<: *airflow-build
+    container_name: airflow-init
+    entrypoint: /bin/bash
+    command: -c "airflow db init && airflow users create \
+        --username admin --password admin --firstname admin --lastname admin \
+        --role Admin --email admin@example.com"
+    environment:
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://weather:weather123@postgres/weatherdb
+      AIRFLOW_CONN_POSTGRES_DEFAULT: postgres://weather:weather123@postgres:5432/weatherdb
+    depends_on:
+      - postgres
+    networks:
+      - project-net
+
+  airflow-webserver:
+    <<: *airflow-build
+    container_name: airflow-webserver
+    restart: always
+    depends_on:
+      airflow-init:
+        condition: service_completed_successfully
+    environment:
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      SLACK_WEBHOOK_URL: ${SLACK_WEBHOOK_URL}
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://weather:weather123@postgres/weatherdb
+      AIRFLOW_CONN_POSTGRES_DEFAULT: postgres://weather:weather123@postgres:5432/weatherdb
+    ports:
+      - "8088:8080"
+    volumes:
+      - ./airflow/dags:/opt/airflow/dags
+      - ./airflow/logs:/opt/airflow/logs
+      - ./airflow/plugins:/opt/airflow/plugins
+    command: webserver
+    networks:
+      - project-net
+
+  airflow-scheduler:
+    <<: *airflow-build
+    container_name: airflow-scheduler
+    restart: always
+    depends_on:
+      - airflow-webserver
+    environment:
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      SLACK_WEBHOOK_URL: ${SLACK_WEBHOOK_URL}
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://weather:weather123@postgres/weatherdb
+      AIRFLOW_CONN_POSTGRES_DEFAULT: postgres://weather:weather123@postgres:5432/weatherdb
+    volumes:
+      - ./airflow/dags:/opt/airflow/dags
+      - ./airflow/logs:/opt/airflow/logs
+      - ./airflow/plugins:/opt/airflow/plugins
+    command: scheduler
+    networks:
+      - project-net
+
+  consumer-app-error:
+    build: ./consumer-app-error
+    container_name: consumer-app-error
+    volumes:
+      - ./consumer-app-error/main.py:/app/main.py     # ⬅ python main 덮어쓰기
+      - ./consumer-app-error/db:/app/db              # DB 모듈도 같이 mount 가능
+    depends_on:
+      kafka-init:
+        condition: service_completed_successfully
+      postgres:
+        condition: service_started
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: weatherdb
+      POSTGRES_USER: weather
+      POSTGRES_PASSWORD: weather123
+    networks:
+      - project-net
+    restart: always
+
 
 # -----------------------------
 # 공용 네트워크
