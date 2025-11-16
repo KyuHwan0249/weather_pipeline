@@ -37,7 +37,7 @@ def update_alert_sent(alert_id):
     cur = conn.cursor()
 
     cur.execute(
-        "UPDATE weather_alerts SET slack_sent = TRUE WHERE alert_id = %s;",
+        "UPDATE weather_alerts SET slack_sent = TRUE, slack_sent_at = NOW() WHERE alert_id = %s;",
         (alert_id,)
     )
 

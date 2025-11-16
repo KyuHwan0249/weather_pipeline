@@ -31,7 +31,6 @@ ALERT_INTERVAL_MINUTES = 30  # 30분 쿨다운
 ###########################################
 last_alert_time = {}
 
-
 def should_alert(location, alert_type, event_time):
     key = (location, alert_type)
 
@@ -100,7 +99,6 @@ parsed_df = (
           .select("data.*")
           .withColumn("event_time", to_timestamp(col("Date_Time")))
 )
-
 
 ###########################################
 # Event-time Window 1분 + Watermark 2분
