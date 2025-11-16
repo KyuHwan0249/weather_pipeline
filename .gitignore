@@ -10,3 +10,6 @@ airflow/logs/*
 !origin-data/.gitkeep
 !minio-data/.gitkeep
 !consumer-app-alarm/checkpoints/.gitkeep
+!airflow/logs/.gitkeep
+!airflow/dags/.gitkeep 
+!airflow/plugins/.gitkeep
