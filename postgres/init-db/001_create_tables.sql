@@ -17,7 +17,7 @@ CREATE TABLE IF NOT EXISTS weather_alerts (
     created_at      TIMESTAMP DEFAULT NOW(),
     slack_sent      BOOLEAN DEFAULT FALSE,
     slack_sent_at   TIMESTAMP,             -- Slack 보내진 시각
-
+    retry_count     INT DEFAULT 0,
     -- Raw Kafka Row
     raw_json        JSONB
 );

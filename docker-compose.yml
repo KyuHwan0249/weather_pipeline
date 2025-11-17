@@ -103,10 +103,12 @@ services:
       echo '[INIT] Deleting old topics...' &&
       /opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka-1:9092,kafka-2:9092,kafka-3:9092 --delete --topic weather-data || true &&
       /opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka-1:9092,kafka-2:9092,kafka-3:9092 --delete --topic error-data || true &&
+      /opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka-1:9092,kafka-2:9092,kafka-3:9092 --delete --topic retry-data || true &&
       echo '[INIT] Creating topics...' &&
       sleep 5 &&
       /opt/kafka/bin/kafka-topics.sh --create --topic weather-data --bootstrap-server kafka-1:9092,kafka-2:9092,kafka-3:9092 --partitions 10 --replication-factor 3 &&
       /opt/kafka/bin/kafka-topics.sh --create --topic error-data --bootstrap-server kafka-1:9092,kafka-2:9092,kafka-3:9092 --partitions 3 --replication-factor 3 &&
+      /opt/kafka/bin/kafka-topics.sh --create --topic retry-data --bootstrap-server kafka-1:9092,kafka-2:9092,kafka-3:9092 --partitions 3 --replication-factor 3 &&
       echo '[INIT] Kafka topics recreated successfully ✅' &&
       exit 0
       "

@@ -20,7 +20,6 @@ class ContinuousErrorSensor(BaseSensorOperator):
 
     def poke(self, context):
         hook = PostgresHook(postgres_conn_id=PG_CONN_ID)
-
         # NEW 상태 row 하나 조회
         row = hook.get_first("""
             SELECT id, error_type, error_message, location, file_name, raw_row, created_at
@@ -72,13 +71,13 @@ class ContinuousErrorSensor(BaseSensorOperator):
 with DAG(
     dag_id="error_alert_continuous",
     start_date=datetime(2025, 1, 1),
-    schedule_interval="@once",         # 딱 한 번만 실행
+    schedule_interval="@once",
     catchup=False,
 ) as dag:
 
     monitor_errors = ContinuousErrorSensor(
         task_id="monitor_errors",
         poke_interval=5,                # 5초마다 체크
-        timeout=60 * 60 * 24 * 365 * 100,                   # 무한 실행
+        timeout=60 * 60 * 24 * 365 * 100,
         mode="reschedule",              # Worker 점유 안함
     )

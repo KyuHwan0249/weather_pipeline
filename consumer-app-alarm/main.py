@@ -2,6 +2,7 @@ import os
 import json
 import requests
 from datetime import datetime
+import random
 
 from pyspark.sql import SparkSession
 from pyspark.sql.functions import (
@@ -12,6 +13,7 @@ from pyspark.sql.types import (
     StringType, DoubleType
 )
 
+from kafka import KafkaProducer
 from db.alert_repository import save_alert, update_alert_sent
 
 
@@ -20,6 +22,7 @@ from db.alert_repository import save_alert, update_alert_sent
 ###########################################
 KAFKA_BOOTSTRAP = "kafka-1:9092,kafka-2:9092,kafka-3:9092"
 TOPIC_NAME = "weather-data"
+RETRY_TOPIC = "retry-data"
 SLACK_WEBHOOK_URL = os.getenv("SLACK_WEBHOOK_URL")
 
 WINDOW_SECONDS = 60          # 1분 윈도우
@@ -53,6 +56,11 @@ def send_slack(payload):
     except:
         return False
 
+retry_producer = KafkaProducer(
+    bootstrap_servers=KAFKA_BOOTSTRAP.split(","),
+    key_serializer=lambda v: v.encode("utf-8"),
+    value_serializer=lambda v: json.dumps(v).encode("utf-8")
+)
 
 ###########################################
 # Spark Session
@@ -154,6 +162,22 @@ def process_window_batch(df, batch_id):
             raw_dict = raw_row.asDict()
             event_time = raw_dict["event_time"]
 
+            # 강제 재시도 메시지 전송
+            if random.random() < 0.2:
+                # ⭐ datetime → string 변환
+                safe_dict = dict(raw_dict)
+                if isinstance(safe_dict.get("event_time"), datetime):
+                    safe_dict["event_time"] = safe_dict["event_time"].isoformat()
+
+                retry_producer.send(
+                    RETRY_TOPIC,
+                    key=loc,
+                    value=safe_dict
+                )
+                # flush 제거 권장 (executor block 방지)
+                print(f"⚠️ Forced Retry → retry-topic: {loc}")
+                continue
+            
             # Alert 체크
             triggered = detect_alert_types(raw_dict)
 

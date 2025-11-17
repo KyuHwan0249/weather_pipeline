@@ -13,7 +13,7 @@ RUN apt-get update && \
     rm -rf /var/lib/apt/lists/*
 
 # PySpark & 의존성 설치
-RUN pip install pyspark==3.5.6 psycopg2-binary requests slack-sdk
+RUN pip install pyspark==3.5.6 psycopg2-binary requests slack-sdk kafka-python
 
 # Kafka jar 폴더
 RUN mkdir -p /app/jars
