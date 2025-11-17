@@ -192,9 +192,11 @@ services:
       tail -f /dev/null
       "
   # -----------------------------
-  consumer-app:
+  consumer-app-minio-save:
     build: ./consumer-app-minio-save
     container_name: consumer-app-minio-save
+    volumes:
+      - ./consumer-app-minio-save/main.py:/app/main.py
     depends_on:
       kafka-init:
         condition: service_completed_successfully
