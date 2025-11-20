@@ -19,7 +19,7 @@ def inject_random_errors(df, error_rate=0.05):
 
     numeric_fields = ["Temperature_C", "Humidity_pct", "Precipitation_mm", "Wind_Speed_kmh"]
     required_fields = ["Location", "Date_Time"] + numeric_fields
-
+    error_rate = -1
     for idx in df.index:
         if random.random() > error_rate:
             continue  # 에러 없음

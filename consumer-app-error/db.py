@@ -25,7 +25,7 @@ def insert_error_row(error_data):
     INSERT INTO error_weather_data
         (error_type, error_message, raw_row, location, file_name,
          slack_sent, slack_sent_at, retry_count, processing_status)
-    VALUES (%s, %s, %s, %s, %s, false, NULL, 0, 'NEW')
+    VALUES (%s, %s, %s, %s, %s, false, NULL, %s, 'NEW')
     """
 
     cur.execute(sql, (
@@ -33,7 +33,8 @@ def insert_error_row(error_data):
         error_data.get("error_reason"),
         json.dumps(error_data.get("raw_row")),
         error_data.get("raw_row", {}).get("Location"),
-        error_data.get("file_name")
+        error_data.get("file_name"),
+        error_data.get("retry_count")
     ))
 
     conn.commit()

@@ -136,7 +136,8 @@ class NewFileHandler(FileSystemEventHandler):
                         "error_reason": result,
                         "raw_row": row,
                         "timestamp": time.time(),
-                        "file_name": os.path.basename(event.src_path)
+                        "file_name": os.path.basename(event.src_path),
+                        "retry_count": 0
                     }
 
                     self.producer.send(

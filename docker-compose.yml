@@ -213,8 +213,8 @@ services:
   # -----------------------------
   spark-master:
     build:
-      context: ./spark
-    image: custom-spark:3.5.6
+      context: ./spark-master
+    image: custom-spark-master:3.5.6
     environment:
       - SPARK_MODE=master
     ports:
@@ -227,8 +227,8 @@ services:
 
   spark-worker:
     build:
-      context: ./spark
-    image: custom-spark:3.5.6
+      context: ./spark-worker
+    image: custom-spark-worker:3.5.6
     environment:
       - SPARK_MODE=worker
       - SPARK_MASTER_URL=spark://spark-master:7077
@@ -257,6 +257,34 @@ services:
         condition: service_started
       kafka-init:
         condition: service_completed_successfully
+      postgres:
+        condition: service_started
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: weatherdb
+      POSTGRES_USER: weather
+      POSTGRES_PASSWORD: weather123
+      SLACK_WEBHOOK_URL: ${SLACK_WEBHOOK_URL}
+    networks:
+      - project-net
+# -----------------------------
+# Consumer-App-Alarm
+# -----------------------------
+
+  consumer-app-retry:
+    user: "1001:1001"
+    build: 
+      context: ./consumer-app-retry
+    container_name: consumer-app-retry
+    volumes:
+      - ./consumer-app-retry/main.py:/app/main.py
+      - ./consumer-app-retry/db:/app/db
+    depends_on:
+      kafka-init:
+        condition: service_completed_successfully
+      postgres:
+        condition: service_started
     environment:
       POSTGRES_HOST: postgres
       POSTGRES_PORT: 5432
@@ -291,7 +319,9 @@ services:
 # Airflow
 # -----------------------------
   airflow-init:
-    <<: *airflow-build
+    build:
+      context: ./airflow
+    image: weather-pipeline-airflow-init
     container_name: airflow-init
     entrypoint: /bin/bash
     command: -c "airflow db init && airflow users create \
@@ -307,7 +337,9 @@ services:
       - project-net
 
   airflow-webserver:
-    <<: *airflow-build
+    build:
+      context: ./airflow
+    image: weather-pipeline-airflow-webserver
     container_name: airflow-webserver
     restart: always
     depends_on:
@@ -329,7 +361,9 @@ services:
       - project-net
 
   airflow-scheduler:
-    <<: *airflow-build
+    build:
+      context: ./airflow
+    image: weather-pipeline-airflow-scheduler  
     container_name: airflow-scheduler
     restart: always
     depends_on:
