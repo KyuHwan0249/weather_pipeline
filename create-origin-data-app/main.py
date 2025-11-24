@@ -19,7 +19,11 @@ def inject_random_errors(df, error_rate=0.05):
 
     numeric_fields = ["Temperature_C", "Humidity_pct", "Precipitation_mm", "Wind_Speed_kmh"]
     required_fields = ["Location", "Date_Time"] + numeric_fields
-    error_rate = -1
+
+    # 환경변수에서 받아온 error_rate가 유효하면 사용
+    if error_rate < 0 or error_rate > 1:
+        error_rate = 0.05  # fallback
+
     for idx in df.index:
         if random.random() > error_rate:
             continue  # 에러 없음
@@ -117,11 +121,19 @@ def generate_origin_files(
 
 def main():
     parser = argparse.ArgumentParser(description="Weather data simulator")
-    parser.add_argument("--input", type=str, default="/app/data/kaggle/weather_data.csv")
-    parser.add_argument("--output", type=str, default="/app/data/output")
-    parser.add_argument("--drop_interval", type=int, default=int(os.getenv("drop_interval", 5)))
-    parser.add_argument("--row_interval", type=int, default=int(os.getenv("row_interval", 60)))
-    parser.add_argument("--error_rate", type=float, default=0.05)
+
+    # 환경변수 기반 경로/설정
+    parser.add_argument("--input", type=str,
+                        default=os.getenv("ORIGIN_INPUT", "/app/data/kaggle/weather_data.csv"))
+    parser.add_argument("--output", type=str,
+                        default=os.getenv("ORIGIN_OUTPUT", "/app/data/output"))
+    parser.add_argument("--drop_interval", type=int,
+                        default=int(os.getenv("DROP_INTERVAL", "5")))
+    parser.add_argument("--row_interval", type=int,
+                        default=int(os.getenv("ROW_INTERVAL", "60")))
+    parser.add_argument("--error_rate", type=float,
+                        default=float(os.getenv("ERROR_RATE", "0.05")))
+
     args = parser.parse_args()
 
     os.makedirs(args.output, exist_ok=True)

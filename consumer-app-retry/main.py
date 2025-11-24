@@ -12,12 +12,17 @@ from db.alert_repository import save_alert, update_alert_sent
 ###############################################
 # CONFIG & CONSTANTS
 ###############################################
-BOOTSTRAP_SERVERS = ["kafka-1:9092", "kafka-2:9092", "kafka-3:9092"]
-RETRY_TOPIC = "retry-data"      # 읽어올 토픽
-ERROR_TOPIC = "error-data"      # 실패 시 보낼 토픽
+BOOTSTRAP_SERVERS = os.getenv("KAFKA_BOOTSTRAP")
+RETRY_TOPIC = os.getenv("TOPIC_RETRY", "retry-data")      # 읽어올 토픽
+ERROR_TOPIC = os.getenv("TOPIC_ERROR", "error-data")      # 실패 시 보낼 토픽
 
 SLACK_WEBHOOK_URL = os.getenv("SLACK_WEBHOOK_URL")
-ALERT_INTERVAL_MINUTES = 30
+ALERT_INTERVAL_MINUTES = os.getenv("ALERT_INTERVAL_MINUTES", 30)
+HIGH_TEMPERATURE_THRESHOLD = os.getenv("HIGH_TEMPERATURE_THRESHOLD", 31.0)
+LOW_TEMPERATURE_THRESHOLD = os.getenv("LOW_TEMPERATURE_THRESHOLD", -10.0)
+RAINFALL_THRESHOLD = os.getenv("RAINFALL_THRESHOLD", 11.0)
+WIND_SPEED_THRESHOLD = os.getenv("WIND_SPEED_THRESHOLD", 35.0)
+RANDOM_LIMIT = os.getenv("RANDOM_LIMIT", 0.01)
 
 # 쿨다운 상태 관리
 last_alert_time = {}
@@ -53,10 +58,10 @@ def detect_alert_types(row):
     except:
         return []
 
-    if t >= 31: alerts.append(("TEMP_HIGH", f"Temperature {t}°C >= 31°C", t, 31.0))
-    if t <= -10: alerts.append(("TEMP_LOW", f"Temperature {t}°C <= -10°C", t, -10.0))
-    if p >= 11: alerts.append(("RAIN_HEAVY", f"Rainfall {p}mm >= 11mm", p, 11.0))
-    if w >= 35: alerts.append(("WIND_STRONG", f"Wind {w} km/h >= 35 km/h", w, 35.0))
+    if t >= float(HIGH_TEMPERATURE_THRESHOLD): alerts.append(("TEMP_HIGH", f"Temperature {t}°C >= {HIGH_TEMPERATURE_THRESHOLD}°C", t, float(HIGH_TEMPERATURE_THRESHOLD)))
+    if t <= float(LOW_TEMPERATURE_THRESHOLD): alerts.append(("TEMP_LOW", f"Temperature {t}°C <= {LOW_TEMPERATURE_THRESHOLD}°C", t, float(LOW_TEMPERATURE_THRESHOLD)))
+    if p >= float(RAINFALL_THRESHOLD): alerts.append(("RAIN_HEAVY", f"Rainfall {p}mm >= {RAINFALL_THRESHOLD}mm", p, float(RAINFALL_THRESHOLD)))
+    if w >= float(WIND_SPEED_THRESHOLD): alerts.append(("WIND_STRONG", f"Wind {w} km/h >= {WIND_SPEED_THRESHOLD} km/h", w, float(WIND_SPEED_THRESHOLD)))
     
     return alerts
 
@@ -65,16 +70,16 @@ def detect_alert_types(row):
 ###############################################
 consumer = KafkaConsumer(
     RETRY_TOPIC,
-    bootstrap_servers=BOOTSTRAP_SERVERS,
+    bootstrap_servers=BOOTSTRAP_SERVERS.split(","),
     group_id="retry-consumer-group",
     key_deserializer=lambda k: k.decode("utf-8") if k else None,
     value_deserializer=lambda v: json.loads(v.decode("utf-8")),
     enable_auto_commit=True,
-    auto_offset_reset="earliest"
+    auto_offset_reset="latest"
 )
 
 error_producer = KafkaProducer(
-    bootstrap_servers=BOOTSTRAP_SERVERS,
+    bootstrap_servers=BOOTSTRAP_SERVERS.split(","),
     key_serializer=lambda k: k.encode("utf-8") if k else None,
     value_serializer=lambda v: json.dumps(v).encode("utf-8")
 )
@@ -102,7 +107,7 @@ while True:
                     # ====================================================
                     # 🎲 [CHAOS ZONE] 50% 확률로 강제 에러 발생
                     # ====================================================
-                    if random.random() < 0.5:
+                    if random.random() < float(RANDOM_LIMIT):
                         print(f"   💣 [CHAOS] Simulating Intentional Failure for {location}...")
                         raise Exception("Intentional Chaos Error (Simulated 50% Failure)")
                     # ====================================================
@@ -167,7 +172,8 @@ while True:
                         value=error_payload
                     )
                     
-                    error_producer.flush() 
+                    # 주기적으로 한번씩 flush 호출
+                    # error_producer.flush() 
                     print(f"   ➡️ Forwarded to {ERROR_TOPIC} with retry_count={retry_count}")
 
     except Exception as e:

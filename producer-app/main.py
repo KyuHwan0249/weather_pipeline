@@ -2,15 +2,19 @@ import os, csv, json, time
 from kafka import KafkaProducer
 from watchdog.observers.polling import PollingObserver
 from watchdog.events import FileSystemEventHandler
+from kafka.errors import NoBrokersAvailable
 
-WATCH_DIR = "/app/data/origin-data"
-TOPIC_NAME = "weather-data"
-ERROR_TOPIC = "error-data"
+# ============================================================
+# 환경변수 기반 설정
+# ============================================================
+WATCH_DIR = os.getenv("WATCH_DIR", "/app/data/origin-data")
+TOPIC_NAME = os.getenv("TOPIC_WEATHER", "weather-data")
+ERROR_TOPIC = os.getenv("TOPIC_ERROR", "error-data")
 
-BOOTSTRAP_SERVERS = ["kafka-1:9092", "kafka-2:9092", "kafka-3:9092"]
+BOOTSTRAP_SERVERS = os.getenv("KAFKA_BOOTSTRAP", "kafka-1:9092,kafka-2:9092,kafka-3:9092")
 
-MAP_FILE_PATH = "/app/region_partition_map.json"
-NUM_PARTITIONS = 10
+MAP_FILE_PATH = os.getenv("REGION_MAP_FILE", "/app/region_partition_map.json")
+NUM_PARTITIONS = int(os.getenv("NUM_PARTITIONS", "10"))
 
 region_partition_map = {}
 
@@ -49,7 +53,7 @@ def convert_numeric_fields(row):
             try:
                 new_row[f] = int(new_row[f])
             except:
-                new_row[f] = 0
+                new_row[f] = 0  # fallback
 
     return new_row, None
 
@@ -69,7 +73,6 @@ def validate_row(row):
         return False, "TYPE_ERROR", err
 
     return True, "OK", converted
-
 
 
 # ============================================================
@@ -146,7 +149,6 @@ class NewFileHandler(FileSystemEventHandler):
                         value=error_data
                     )
                     continue
-                    # 정상 topic에는 보내지 않음
 
                 # ✔️ 검증 성공 시 result는 변환된 row
                 valid_row = result
@@ -167,13 +169,14 @@ class NewFileHandler(FileSystemEventHandler):
             print(f"❌ Error processing {event.src_path}: {e}")
 
 
-from kafka.errors import NoBrokersAvailable
-
+# ============================================================
+# Kafka 연결
+# ============================================================
 def connect_kafka():
     for i in range(20):
         try:
             return KafkaProducer(
-                bootstrap_servers=BOOTSTRAP_SERVERS,
+                bootstrap_servers=BOOTSTRAP_SERVERS.split(","),
                 key_serializer=lambda k: k,
                 value_serializer=lambda v: json.dumps(v).encode("utf-8")
             )
@@ -181,7 +184,6 @@ def connect_kafka():
             print(f"[WARN] Kafka not ready... retry {i+1}/20")
             time.sleep(3)
     raise Exception("Kafka not available after retries")
-
 
 
 # ============================================================

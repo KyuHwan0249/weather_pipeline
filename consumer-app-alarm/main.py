@@ -20,14 +20,19 @@ from db.alert_repository import save_alert, update_alert_sent
 ###########################################
 # CONFIG
 ###########################################
-KAFKA_BOOTSTRAP = "kafka-1:9092,kafka-2:9092,kafka-3:9092"
-TOPIC_NAME = "weather-data"
-RETRY_TOPIC = "retry-data"
+KAFKA_BOOTSTRAP = os.getenv("KAFKA_BOOTSTRAP")
+TOPIC_NAME = os.getenv("TOPIC_WEATHER")
+RETRY_TOPIC = os.getenv("TOPIC_RETRY")
 SLACK_WEBHOOK_URL = os.getenv("SLACK_WEBHOOK_URL")
 
-WINDOW_SECONDS = 60          # 1분 윈도우
-ALERT_INTERVAL_MINUTES = 30  # 30분 쿨다운
-
+WINDOW_SECONDS = int(os.getenv("WINDOW_SECONDS"))
+ALERT_INTERVAL_MINUTES = int(os.getenv("ALERT_INTERVAL_MINUTES"))
+WATER_MARK_MINUTES = int(os.getenv("WATERMARK_MINUTES"))
+HIGH_TEMPERATURE_THRESHOLD = float(os.getenv("HIGH_TEMPERATURE_THRESHOLD"))
+LOW_TEMPERATURE_THRESHOLD = float(os.getenv("LOW_TEMPERATURE_THRESHOLD"))
+RAINFALL_THRESHOLD = float(os.getenv("RAINFALL_THRESHOLD"))
+WIND_SPEED_THRESHOLD = float(os.getenv("WIND_SPEED_THRESHOLD"))
+RANDOM_LIMIT = float(os.getenv("RANDOM_LIMIT", "0.2"))
 
 ###########################################
 # 상태 저장 (event_time 기반)
@@ -97,7 +102,13 @@ raw_df = (
         .format("kafka")
         .option("kafka.bootstrap.servers", KAFKA_BOOTSTRAP)
         .option("subscribe", TOPIC_NAME)
-        .option("startingOffsets", "latest")
+        .option("startingOffsets", "latest")  # 혹은 earliest
+        # ▼▼▼ [추가] 타임아웃 설정 늘리기 ▼▼▼
+        .option("kafka.request.timeout.ms", "60000")      # 요청 타임아웃 60초 (기본 30초)
+        .option("kafka.session.timeout.ms", "60000")      # 세션 타임아웃 60초 (기본 10초)
+        .option("kafka.connection.timeout.ms", "60000")   # 연결 타임아웃 60초
+        .option("retries", "5")                           # 실패 시 5번까지 재시도
+        .option("maxOffsetsPerTrigger", 10000)
         .load()
 )
 
@@ -113,7 +124,7 @@ parsed_df = (
 ###########################################
 windowed_df = (
     parsed_df
-        .withWatermark("event_time", "2 minutes")
+        .withWatermark("event_time", f"{WATER_MARK_MINUTES} minutes")
         .groupBy(
             window(col("event_time"), f"{WINDOW_SECONDS} seconds"),
             col("Location")
@@ -131,14 +142,14 @@ def detect_alert_types(row):
     p = row["Precipitation_mm"]
     w = row["Wind_Speed_kmh"]
 
-    if t is not None and t >= 31:
-        alerts.append(("TEMP_HIGH", f"Temperature {t}°C >= 31°C", t, 31.0))
-    if t is not None and t <= -10:
-        alerts.append(("TEMP_LOW", f"Temperature {t}°C <= -10°C", t, -10.0))
-    if p is not None and p >= 11:
-        alerts.append(("RAIN_HEAVY", f"Rainfall {p}mm >= 11mm", p, 11.0))
-    if w is not None and w >= 35:
-        alerts.append(("WIND_STRONG", f"Wind {w} km/h >= 35 km/h", w, 35.0))
+    if t is not None and t >= HIGH_TEMPERATURE_THRESHOLD:
+        alerts.append(("TEMP_HIGH", f"Temperature {t}°C >= {HIGH_TEMPERATURE_THRESHOLD}°C", t, HIGH_TEMPERATURE_THRESHOLD))
+    if t is not None and t <= LOW_TEMPERATURE_THRESHOLD:
+        alerts.append(("TEMP_LOW", f"Temperature {t}°C <= {LOW_TEMPERATURE_THRESHOLD}°C", t, LOW_TEMPERATURE_THRESHOLD))
+    if p is not None and p >= RAINFALL_THRESHOLD:
+        alerts.append(("RAIN_HEAVY", f"Rainfall {p}mm >= {RAINFALL_THRESHOLD}mm", p, RAINFALL_THRESHOLD))
+    if w is not None and w >= WIND_SPEED_THRESHOLD:
+        alerts.append(("WIND_STRONG", f"Wind {w} km/h >= {WIND_SPEED_THRESHOLD} km/h", w, WIND_SPEED_THRESHOLD))
 
     return alerts
 
@@ -163,7 +174,7 @@ def process_window_batch(df, batch_id):
             event_time = raw_dict["event_time"]
 
             # 강제 재시도 메시지 전송
-            if random.random() < 0.2:
+            if random.random() < RANDOM_LIMIT:
                 # ⭐ datetime → string 변환
                 safe_dict = dict(raw_dict)
                 if isinstance(safe_dict.get("event_time"), datetime):

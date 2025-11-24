@@ -1,18 +1,20 @@
+import os
 from kafka import KafkaConsumer
 import json
 import time
 from db import insert_error_row
 
-BOOTSTRAP = ["kafka-1:9092", "kafka-2:9092", "kafka-3:9092"]
-TOPIC = "error-data"
+BOOTSTRAP = os.getenv("KAFKA_BOOTSTRAP")
+TOPIC = os.getenv("TOPIC_ERROR", "error-data")
 
 def connect_consumer():
     for i in range(20):
         try:
             return KafkaConsumer(
                 TOPIC,
-                bootstrap_servers=BOOTSTRAP,
-                auto_offset_reset="latest",
+                bootstrap_servers=BOOTSTRAP.split(","),
+                group_id="error-consumer",
+                auto_offset_reset="earliest",
                 enable_auto_commit=True,
                 value_deserializer=lambda v: json.loads(v.decode("utf-8")),
                 key_deserializer=lambda k: k.decode("utf-8") if k else None,

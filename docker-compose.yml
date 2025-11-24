@@ -6,6 +6,9 @@ x-airflow-build: &airflow-build
   image: custom-airflow:latest
 
 services:
+  #############################################################
+  # 1) ORIGIN DATA GENERATOR (create-origin-data-app)
+  #############################################################
   create-origin-data-app:
     build: ./create-origin-data-app
     container_name: create-origin-data-app
@@ -14,78 +17,98 @@ services:
       - ./origin-data:/app/data/output
       - ./create-origin-data-app/main.py:/app/main.py
     environment:
-      - PYTHONUNBUFFERED=1
-      - drop_interval=3
-      - row_interval=60
+      PYTHONUNBUFFERED: 1
+      ORIGIN_INPUT: ${ORIGIN_INPUT}
+      ORIGIN_OUTPUT: ${ORIGIN_OUTPUT}
+      DROP_INTERVAL: ${DROP_INTERVAL}
+      ROW_INTERVAL: ${ROW_INTERVAL}
+      ERROR_RATE: ${ERROR_RATE}
     restart: on-failure
     depends_on:
       - producer-app
     networks:
       - project-net
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 256M
 
-  # -----------------------------
-  # Kafka Broker 1
-  # -----------------------------
+  #############################################################
+  # 2) KAFKA CLUSTER (3 brokers)
+  #############################################################
   kafka-1:
     image: apache/kafka:3.7.0
     container_name: kafka-1
     hostname: kafka-1
     networks:
       project-net:
-        aliases:
-          - kafka-1
+        aliases: [kafka-1]
     ports:
       - "9092:9092"
     volumes:
       - ./kafka/server-1.properties:/opt/kafka/config/kraft/server.properties
       - ./kafka/data/broker1:/var/lib/kafka/data
+    environment:
+      KAFKA_HEAP_OPTS: "-Xmx256M -Xms256M"
     command: >
       bash -c "/opt/kafka/bin/kafka-storage.sh format -t cluster-id-1 -c /opt/kafka/config/kraft/server.properties --ignore-formatted &&
                /opt/kafka/bin/kafka-server-start.sh /opt/kafka/config/kraft/server.properties"
+    deploy:
+      resources:
+        limits:
+          cpus: "0.8"
+          memory: 512M
 
-  # -----------------------------
-  # Kafka Broker 2
-  # -----------------------------
   kafka-2:
     image: apache/kafka:3.7.0
     container_name: kafka-2
     hostname: kafka-2
     networks:
       project-net:
-        aliases:
-          - kafka-2
+        aliases: [kafka-2]
     ports:
       - "9093:9092"
     volumes:
       - ./kafka/server-2.properties:/opt/kafka/config/kraft/server.properties
       - ./kafka/data/broker2:/var/lib/kafka/data
+    environment:
+      KAFKA_HEAP_OPTS: "-Xmx256M -Xms256M"
     command: >
       bash -c "/opt/kafka/bin/kafka-storage.sh format -t cluster-id-1 -c /opt/kafka/config/kraft/server.properties --ignore-formatted &&
                /opt/kafka/bin/kafka-server-start.sh /opt/kafka/config/kraft/server.properties"
+    deploy:
+      resources:
+        limits:
+          cpus: "0.8"
+          memory: 512M
 
-  # -----------------------------
-  # Kafka Broker 3
-  # -----------------------------
   kafka-3:
     image: apache/kafka:3.7.0
     container_name: kafka-3
     hostname: kafka-3
     networks:
       project-net:
-        aliases:
-          - kafka-3
+        aliases: [kafka-3]
     ports:
       - "9094:9092"
     volumes:
       - ./kafka/server-3.properties:/opt/kafka/config/kraft/server.properties
       - ./kafka/data/broker3:/var/lib/kafka/data
+    environment:
+      KAFKA_HEAP_OPTS: "-Xmx256M -Xms256M"
     command: >
       bash -c "/opt/kafka/bin/kafka-storage.sh format -t cluster-id-1 -c /opt/kafka/config/kraft/server.properties --ignore-formatted &&
                /opt/kafka/bin/kafka-server-start.sh /opt/kafka/config/kraft/server.properties"
+    deploy:
+      resources:
+        limits:
+          cpus: "0.8"
+          memory: 512M
 
-  # -----------------------------
-  # Kafka 초기화 (토픽 생성)
-  # -----------------------------
+  #############################################################
+  # 3) KAFKA INIT (Delete & Create topics)
+  #############################################################
   kafka-init:
     image: apache/kafka:3.7.0
     container_name: kafka-init
@@ -94,44 +117,57 @@ services:
       - kafka-2
       - kafka-3
     entrypoint: ["/bin/bash", "-c"]
-    networks:
-      - project-net
+    networks: [project-net]
     command: >
       "
       echo '[INIT] Waiting for Kafka brokers...' &&
       sleep 20 &&
+
       echo '[INIT] Deleting old topics...' &&
-      /opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka-1:9092,kafka-2:9092,kafka-3:9092 --delete --topic weather-data || true &&
-      /opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka-1:9092,kafka-2:9092,kafka-3:9092 --delete --topic error-data || true &&
-      /opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka-1:9092,kafka-2:9092,kafka-3:9092 --delete --topic retry-data || true &&
+      /opt/kafka/bin/kafka-topics.sh --bootstrap-server ${KAFKA_BOOTSTRAP} --delete --topic ${TOPIC_WEATHER} || true &&
+      /opt/kafka/bin/kafka-topics.sh --bootstrap-server ${KAFKA_BOOTSTRAP} --delete --topic ${TOPIC_ERROR} || true &&
+      /opt/kafka/bin/kafka-topics.sh --bootstrap-server ${KAFKA_BOOTSTRAP} --delete --topic ${TOPIC_RETRY} || true &&
+
       echo '[INIT] Creating topics...' &&
       sleep 5 &&
-      /opt/kafka/bin/kafka-topics.sh --create --topic weather-data --bootstrap-server kafka-1:9092,kafka-2:9092,kafka-3:9092 --partitions 10 --replication-factor 3 &&
-      /opt/kafka/bin/kafka-topics.sh --create --topic error-data --bootstrap-server kafka-1:9092,kafka-2:9092,kafka-3:9092 --partitions 3 --replication-factor 3 &&
-      /opt/kafka/bin/kafka-topics.sh --create --topic retry-data --bootstrap-server kafka-1:9092,kafka-2:9092,kafka-3:9092 --partitions 3 --replication-factor 3 &&
-      echo '[INIT] Kafka topics recreated successfully ✅' &&
+      /opt/kafka/bin/kafka-topics.sh --create --topic ${TOPIC_WEATHER} --bootstrap-server ${KAFKA_BOOTSTRAP} --partitions 10 --replication-factor 3 &&
+      /opt/kafka/bin/kafka-topics.sh --create --topic ${TOPIC_ERROR} --bootstrap-server ${KAFKA_BOOTSTRAP} --partitions 3 --replication-factor 3 &&
+      /opt/kafka/bin/kafka-topics.sh --create --topic ${TOPIC_RETRY} --bootstrap-server ${KAFKA_BOOTSTRAP} --partitions 3 --replication-factor 3 &&
+
+      echo '[INIT] Kafka topics ready 🚀' &&
       exit 0
       "
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 128M
 
-  # -----------------------------
-  # Kafka UI
-  # -----------------------------
+  #############################################################
+  # 4) KAFKA UI
+  #############################################################
   kafka-ui:
     image: provectuslabs/kafka-ui:latest
     container_name: kafka-ui
     ports:
       - "8080:8080"
     environment:
-      - KAFKA_CLUSTERS_0_NAME=weather-cluster
-      - KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS=kafka-1:9092,kafka-2:9092,kafka-3:9092
+      KAFKA_CLUSTERS_0_NAME: weather-cluster
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: ${KAFKA_BOOTSTRAP}
     depends_on:
       - kafka-1
       - kafka-2
       - kafka-3
-    networks:
-      - project-net
-  
-  # -----------------------------
+    networks: [project-net]
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 384M
+
+  #############################################################
+  # 5) PRODUCER APP
+  #############################################################
   producer-app:
     build: ./producer-app
     container_name: producer-app
@@ -140,21 +176,35 @@ services:
       - ./producer-app/main.py:/app/main.py
       - ./producer-app:/app
     environment:
-      - check_interval=5
+      WATCH_DIR: ${WATCH_DIR}
+      REGION_MAP_FILE: ${REGION_MAP_FILE}
+      NUM_PARTITIONS: ${NUM_PARTITIONS}
+      TOPIC_WEATHER: ${TOPIC_WEATHER}
+      TOPIC_ERROR: ${TOPIC_ERROR}
+      KAFKA_BOOTSTRAP: ${KAFKA_BOOTSTRAP}
     depends_on:
       kafka-init:
         condition: service_completed_successfully
     networks: [project-net]
     restart: on-failure
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 128M
 
-# -----------------------------
-  # MinIO (Object Storage)
-  # -----------------------------
+  #############################################################
+  # 6) MINIO
+  #############################################################
   minio-init:
     image: busybox
     command: rm -rf /data/*
     volumes:
       - ./minio-data:/data
+    deploy:
+      resources:
+        limits:
+          memory: 64M
 
   minio:
     image: minio/minio:latest
@@ -164,36 +214,42 @@ services:
     depends_on:
       - minio-init
     environment:
-      - MINIO_ROOT_USER=minioadmin       # Access Key
-      - MINIO_ROOT_PASSWORD=minioadmin   # Secret Key
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
     command: server /data --console-address ":9001"
     ports:
-      - "9000:9000"   # S3 API endpoint
-      - "9001:9001"   # Web Console (UI)
+      - "9000:9000"
+      - "9001:9001"
     volumes:
       - ./minio-data:/data
-    networks:
-      - project-net
+    networks: [project-net]
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 256M
 
-  # -----------------------------
-  # MinIO Client (옵션)
-  # -----------------------------
   mc:
     image: minio/mc:latest
     container_name: minio-client
-    depends_on:
-      - minio
-    networks:
-      - project-net
+    depends_on: [minio]
+    networks: [project-net]
     entrypoint: >
       /bin/sh -c "
       sleep 5;
-      mc alias set myminio http://minio:9000 minioadmin minioadmin;
-      mc mb myminio/weather-bucket || true;
-      echo '[INIT] MinIO bucket weather-bucket ready ✅';
+      mc alias set myminio ${MINIO_ENDPOINT} ${MINIO_ROOT_USER} ${MINIO_ROOT_PASSWORD};
+      mc mb myminio/${MINIO_BUCKET} || true;
+      echo '[INIT] MinIO bucket ready ⚡';
       tail -f /dev/null
       "
-  # -----------------------------
+    deploy:
+      resources:
+        limits:
+          memory: 64M
+
+  #############################################################
+  # 7) CONSUMER: MINIO SAVE
+  #############################################################
   consumer-app-minio-save:
     build: ./consumer-app-minio-save
     container_name: consumer-app-minio-save
@@ -204,45 +260,66 @@ services:
         condition: service_completed_successfully
       minio:
         condition: service_started
+    environment:
+      MINIO_BUCKET: ${MINIO_BUCKET}
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY}
+      MINIO_ENDPOINT: ${MINIO_ENDPOINT}
+      KAFKA_BOOTSTRAP: ${KAFKA_BOOTSTRAP}
+      TOPIC_WEATHER: ${TOPIC_WEATHER}
     networks:
       - project-net
     restart: on-failure
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 200M
 
-  # -----------------------------
-  # Spark Cluster
-  # -----------------------------
+  #############################################################
+  # 8) SPARK CLUSTER
+  #############################################################
   spark-master:
     build:
       context: ./spark-master
     image: custom-spark-master:3.5.6
     environment:
-      - SPARK_MODE=master
+      SPARK_MODE: master
     ports:
       - "8081:8080"
       - "7077:7077"
     volumes:
       - spark-checkpoints:/shared-checkpoints
-    networks:
-      - project-net
+    networks: [project-net]
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 512M
 
   spark-worker:
     build:
       context: ./spark-worker
     image: custom-spark-worker:3.5.6
     environment:
-      - SPARK_MODE=worker
-      - SPARK_MASTER_URL=spark://spark-master:7077
+      SPARK_MODE: worker
+      SPARK_MASTER_URL: spark://spark-master:7077
+      SPARK_WORKER_MEMORY: 1G
+      SPARK_WORKER_CORES: 2
     depends_on:
       - spark-master
     volumes:
-    - spark-checkpoints:/shared-checkpoints
-    networks:
-      - project-net
+      - spark-checkpoints:/shared-checkpoints
+    networks: [project-net]
+    deploy:
+      resources:
+        limits:
+          cpus: "1.5"
+          memory: 1.5G
 
-# -----------------------------
-# Consumer-App-Alarm
-# -----------------------------
-
+  #############################################################
+  # 9) CONSUMER: ALARM (Spark Streaming Driver)
+  #############################################################
   consumer-app-alarm:
     user: "1001:1001"
     build: 
@@ -260,23 +337,49 @@ services:
       postgres:
         condition: service_started
     environment:
-      POSTGRES_HOST: postgres
-      POSTGRES_PORT: 5432
-      POSTGRES_DB: weatherdb
-      POSTGRES_USER: weather
-      POSTGRES_PASSWORD: weather123
+      # Postgres
+      POSTGRES_HOST: ${POSTGRES_HOST}
+      POSTGRES_PORT: ${POSTGRES_PORT}
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+
+      # Kafka
+      KAFKA_BOOTSTRAP: ${KAFKA_BOOTSTRAP}
+      TOPIC_WEATHER: ${TOPIC_WEATHER}
+      TOPIC_RETRY: ${TOPIC_RETRY}
+
+      # Slack
       SLACK_WEBHOOK_URL: ${SLACK_WEBHOOK_URL}
+
+      # Alert window
+      WINDOW_SECONDS: ${WINDOW_SECONDS}
+      ALERT_INTERVAL_MINUTES: ${ALERT_INTERVAL_MINUTES}
+      WATERMARK_MINUTES: ${WATERMARK_MINUTES}
+
+      # Thresholds
+      HIGH_TEMPERATURE_THRESHOLD: ${HIGH_TEMPERATURE_THRESHOLD}
+      LOW_TEMPERATURE_THRESHOLD: ${LOW_TEMPERATURE_THRESHOLD}
+      RAINFALL_THRESHOLD: ${RAINFALL_THRESHOLD}
+      WIND_SPEED_THRESHOLD: ${WIND_SPEED_THRESHOLD}
+      RANDOM_LIMIT: ${RANDOM_LIMIT}
     networks:
       - project-net
-# -----------------------------
-# Consumer-App-Alarm
-# -----------------------------
+    ports:
+      - "4040:4040"
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 1G
 
+  #############################################################
+  # 10) CONSUMER: RETRY
+  #############################################################
   consumer-app-retry:
     user: "1001:1001"
     build: 
       context: ./consumer-app-retry
-    container_name: consumer-app-retry
     volumes:
       - ./consumer-app-retry/main.py:/app/main.py
       - ./consumer-app-retry/db:/app/db
@@ -286,38 +389,92 @@ services:
       postgres:
         condition: service_started
     environment:
-      POSTGRES_HOST: postgres
-      POSTGRES_PORT: 5432
-      POSTGRES_DB: weatherdb
-      POSTGRES_USER: weather
-      POSTGRES_PASSWORD: weather123
+      POSTGRES_HOST: ${POSTGRES_HOST}
+      POSTGRES_PORT: ${POSTGRES_PORT}
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+
+      KAFKA_BOOTSTRAP: ${KAFKA_BOOTSTRAP}
+      TOPIC_RETRY: ${TOPIC_RETRY}
+      TOPIC_ERROR: ${TOPIC_ERROR}
+
       SLACK_WEBHOOK_URL: ${SLACK_WEBHOOK_URL}
+
+      ALERT_INTERVAL_MINUTES: ${ALERT_INTERVAL_MINUTES}
+      HIGH_TEMPERATURE_THRESHOLD: ${HIGH_TEMPERATURE_THRESHOLD}
+      LOW_TEMPERATURE_THRESHOLD: ${LOW_TEMPERATURE_THRESHOLD}
+      RAINFALL_THRESHOLD: ${RAINFALL_THRESHOLD}
+      WIND_SPEED_THRESHOLD: ${WIND_SPEED_THRESHOLD}
+      RANDOM_LIMIT: ${RANDOM_LIMIT}
     networks:
       - project-net
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 256M
 
-# -----------------------------
-# PostgreSQL
-# -----------------------------
+  #############################################################
+  # 11) CONSUMER: ERROR
+  #############################################################
+  consumer-app-error:
+    build: ./consumer-app-error
+    container_name: consumer-app-error
+    volumes:
+      - ./consumer-app-error/main.py:/app/main.py
+      - ./consumer-app-error/db:/app/db
+    depends_on:
+      kafka-init:
+        condition: service_completed_successfully
+      postgres:
+        condition: service_started
+    environment:
+      POSTGRES_HOST: ${POSTGRES_HOST}
+      POSTGRES_PORT: ${POSTGRES_PORT}
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+
+      KAFKA_BOOTSTRAP: ${KAFKA_BOOTSTRAP}
+      TOPIC_ERROR: ${TOPIC_ERROR}
+    networks:
+      - project-net
+    restart: always
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 256M
+
+  #############################################################
+  # 12) POSTGRES
+  #############################################################
   postgres:
     build:
       context: ./postgres
     container_name: postgres
     restart: always
     environment:
-      POSTGRES_USER: weather
-      POSTGRES_PASSWORD: weather123
-      POSTGRES_DB: weatherdb
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
     ports:
       - "5432:5432"
     volumes:
-      - pgdata:/var/lib/postgresql/data 
+      - pgdata:/var/lib/postgresql/data
       - ./postgres/init-db:/docker-entrypoint-initdb.d
     networks:
       - project-net
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 512M
 
-# -----------------------------
-# Airflow
-# -----------------------------
+  #############################################################
+  # 13) AIRFLOW
+  #############################################################
   airflow-init:
     build:
       context: ./airflow
@@ -329,17 +486,17 @@ services:
         --role Admin --email admin@example.com"
     environment:
       AIRFLOW__CORE__EXECUTOR: LocalExecutor
-      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://weather:weather123@postgres/weatherdb
-      AIRFLOW_CONN_POSTGRES_DEFAULT: postgres://weather:weather123@postgres:5432/weatherdb
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}/${POSTGRES_DB}
+      AIRFLOW_CONN_POSTGRES_DEFAULT: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}
     depends_on:
       - postgres
     networks:
       - project-net
 
+
+
   airflow-webserver:
-    build:
-      context: ./airflow
-    image: weather-pipeline-airflow-webserver
+    <<: *airflow-build
     container_name: airflow-webserver
     restart: always
     depends_on:
@@ -348,8 +505,8 @@ services:
     environment:
       AIRFLOW__CORE__EXECUTOR: LocalExecutor
       SLACK_WEBHOOK_URL: ${SLACK_WEBHOOK_URL}
-      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://weather:weather123@postgres/weatherdb
-      AIRFLOW_CONN_POSTGRES_DEFAULT: postgres://weather:weather123@postgres:5432/weatherdb
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}/${POSTGRES_DB}
+      AIRFLOW_CONN_POSTGRES_DEFAULT: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}
     ports:
       - "8088:8080"
     volumes:
@@ -357,13 +514,15 @@ services:
       - ./airflow/logs:/opt/airflow/logs
       - ./airflow/plugins:/opt/airflow/plugins
     command: webserver
-    networks:
-      - project-net
+    networks: [project-net]
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 1G
 
   airflow-scheduler:
-    build:
-      context: ./airflow
-    image: weather-pipeline-airflow-scheduler  
+    <<: *airflow-build
     container_name: airflow-scheduler
     restart: always
     depends_on:
@@ -371,41 +530,23 @@ services:
     environment:
       AIRFLOW__CORE__EXECUTOR: LocalExecutor
       SLACK_WEBHOOK_URL: ${SLACK_WEBHOOK_URL}
-      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://weather:weather123@postgres/weatherdb
-      AIRFLOW_CONN_POSTGRES_DEFAULT: postgres://weather:weather123@postgres:5432/weatherdb
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres/${POSTGRES_DB}
+      AIRFLOW_CONN_POSTGRES_DEFAULT: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
     volumes:
       - ./airflow/dags:/opt/airflow/dags
       - ./airflow/logs:/opt/airflow/logs
       - ./airflow/plugins:/opt/airflow/plugins
     command: scheduler
-    networks:
-      - project-net
+    networks: [project-net]
+    deploy:
+      resources:
+        limits:
+          cpus: "0.8"
+          memory: 768M
 
-  consumer-app-error:
-    build: ./consumer-app-error
-    container_name: consumer-app-error
-    volumes:
-      - ./consumer-app-error/main.py:/app/main.py     # ⬅ python main 덮어쓰기
-      - ./consumer-app-error/db:/app/db              # DB 모듈도 같이 mount 가능
-    depends_on:
-      kafka-init:
-        condition: service_completed_successfully
-      postgres:
-        condition: service_started
-    environment:
-      POSTGRES_HOST: postgres
-      POSTGRES_PORT: 5432
-      POSTGRES_DB: weatherdb
-      POSTGRES_USER: weather
-      POSTGRES_PASSWORD: weather123
-    networks:
-      - project-net
-    restart: always
-
-
-# -----------------------------
-# 공용 네트워크
-# -----------------------------
+#############################################################
+# NETWORKS & VOLUMES
+#############################################################
 networks:
   project-net:
     driver: bridge
