@@ -1,9 +1,9 @@
-[2025-11-30T07:47:05.497+0000] {manager.py:469} INFO - Processing files using up to 2 processes at a time 
-[2025-11-30T07:47:05.497+0000] {manager.py:470} INFO - Process each file at most once every 30 seconds
-[2025-11-30T07:47:05.497+0000] {manager.py:471} INFO - Checking for new files in /opt/airflow/dags every 300 seconds
-[2025-11-30T07:47:05.498+0000] {manager.py:738} INFO - Searching for files in /opt/airflow/dags
-[2025-11-30T07:47:05.501+0000] {manager.py:741} INFO - There are 1 files in /opt/airflow/dags
-[2025-11-30T07:47:05.674+0000] {manager.py:879} INFO - 
+[2025-11-30T08:41:42.535+0000] {manager.py:469} INFO - Processing files using up to 2 processes at a time 
+[2025-11-30T08:41:42.535+0000] {manager.py:470} INFO - Process each file at most once every 30 seconds
+[2025-11-30T08:41:42.536+0000] {manager.py:471} INFO - Checking for new files in /opt/airflow/dags every 300 seconds
+[2025-11-30T08:41:42.536+0000] {manager.py:738} INFO - Searching for files in /opt/airflow/dags
+[2025-11-30T08:41:42.539+0000] {manager.py:741} INFO - There are 1 files in /opt/airflow/dags
+[2025-11-30T08:41:42.868+0000] {manager.py:879} INFO - 
 ================================================================================
 DAG File Processing Stats
 
@@ -11,34 +11,20 @@ File Path                                  PID  Runtime      # DAGs    # Errors 
 ---------------------------------------  -----  ---------  --------  ----------  --------------  ----------
 /opt/airflow/dags/error_alert_sensor.py    175  0.04s             0           0
 ================================================================================
-[2025-11-30T07:47:35.969+0000] {manager.py:879} INFO - 
+[2025-11-30T08:42:13.040+0000] {manager.py:879} INFO - 
 ================================================================================
 DAG File Processing Stats
 
 File Path                                PID    Runtime      # DAGs    # Errors  Last Runtime    Last Run
 ---------------------------------------  -----  ---------  --------  ----------  --------------  -------------------
-/opt/airflow/dags/error_alert_sensor.py                           1           0  0.38s           2025-11-30T07:47:06
+/opt/airflow/dags/error_alert_sensor.py                           1           0  0.76s           2025-11-30T08:41:43
 ================================================================================
-[2025-11-30T07:47:50.394+0000] {manager.py:451} INFO - Exiting gracefully upon receiving signal 15
-[2025-11-30T07:48:39.706+0000] {manager.py:469} INFO - Processing files using up to 2 processes at a time 
-[2025-11-30T07:48:39.707+0000] {manager.py:470} INFO - Process each file at most once every 30 seconds
-[2025-11-30T07:48:39.707+0000] {manager.py:471} INFO - Checking for new files in /opt/airflow/dags every 300 seconds
-[2025-11-30T07:48:39.707+0000] {manager.py:738} INFO - Searching for files in /opt/airflow/dags
-[2025-11-30T07:48:39.709+0000] {manager.py:741} INFO - There are 1 files in /opt/airflow/dags
-[2025-11-30T07:48:39.819+0000] {manager.py:879} INFO - 
+[2025-11-30T08:42:43.459+0000] {manager.py:879} INFO - 
 ================================================================================
 DAG File Processing Stats
 
-File Path                                  PID  Runtime      # DAGs    # Errors  Last Runtime    Last Run
----------------------------------------  -----  ---------  --------  ----------  --------------  ----------
-/opt/airflow/dags/error_alert_sensor.py    174  0.04s             0           0
-================================================================================
-[2025-11-30T07:49:10.129+0000] {manager.py:879} INFO - 
-================================================================================
-DAG File Processing Stats
-
-File Path                                  PID  Runtime      # DAGs    # Errors  Last Runtime    Last Run
+File Path                                PID    Runtime      # DAGs    # Errors  Last Runtime    Last Run
 ---------------------------------------  -----  ---------  --------  ----------  --------------  -------------------
-/opt/airflow/dags/error_alert_sensor.py    180  0.00s             1           0  0.14s           2025-11-30T07:48:39
+/opt/airflow/dags/error_alert_sensor.py                           1           0  0.20s           2025-11-30T08:42:14
 ================================================================================
-[2025-11-30T07:49:29.311+0000] {manager.py:451} INFO - Exiting gracefully upon receiving signal 15
+[2025-11-30T08:43:01.915+0000] {manager.py:451} INFO - Exiting gracefully upon receiving signal 15

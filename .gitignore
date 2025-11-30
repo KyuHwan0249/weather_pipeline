@@ -7,6 +7,9 @@ minio-data/*
 consumer-app-alarm/checkpoints/*
 airflow/logs/*
 pgdata/
+producer-app/producer_checkpoint.json
+producer-app/region_partition_map.json
+create-origin-data-app/state/origin_generator_checkpoint.json
 
 !origin-data/.gitkeep
 !minio-data/.gitkeep

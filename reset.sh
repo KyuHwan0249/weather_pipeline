@@ -68,6 +68,18 @@ echo "🗑 Clearing Airflow logs..."
 docker run --rm -v $(pwd)/airflow/logs:/data busybox sh -c "rm -rf /data/*"
 
 echo ""
+echo "🗑 Clearing Producer checkpoint..."
+rm -f producer-app/producer_checkpoint.json
+echo "🗑 Clearing Region map..."
+rm -f producer-app/region_partition_map.json
+
+echo "🗑 Clearing Origin Generator checkpoint..."
+docker run --rm -v $(pwd)/create-origin-data-app/state:/data busybox sh -c "rm -f /data/origin_generator_checkpoint.json"
+
+echo "🗑 Clearing Origin output files..."
+rm -f origin-data/*
+
+echo ""
 echo "🎉 Reset complete!"
 echo "▶ Run: docker compose up -d"
 echo "   Kafka cluster reformatted with unified cluster ID: $CLUSTER_ID"

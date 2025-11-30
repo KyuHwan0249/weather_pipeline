@@ -1,9 +1,10 @@
 import os
 import time
-import pandas as pd
-import argparse
+import json
 import uuid
 import random
+import argparse
+import pandas as pd
 from datetime import datetime, timedelta
 
 
@@ -11,61 +12,87 @@ from datetime import datetime, timedelta
 # 🔥 랜덤 에러 삽입 함수
 # ---------------------------------------------------------
 def inject_random_errors(df, error_rate=0.05):
-    """
-    df: chunk dataframe
-    error_rate: 0.05 → 5% 확률로 문제있는 row 생성
-    """
     df = df.copy()
 
     numeric_fields = ["Temperature_C", "Humidity_pct", "Precipitation_mm", "Wind_Speed_kmh"]
     required_fields = ["Location", "Date_Time"] + numeric_fields
 
-    # 환경변수에서 받아온 error_rate가 유효하면 사용
     if error_rate < 0 or error_rate > 1:
-        error_rate = 0.05  # fallback
+        error_rate = 0.05
 
     for idx in df.index:
         if random.random() > error_rate:
-            continue  # 에러 없음
+            continue
 
         error_type = random.choice(["missing_field", "numeric_corrupt", "date_corrupt"])
 
-        # 1️⃣ 필수 필드 누락
         if error_type == "missing_field":
-            field_to_remove = random.choice(required_fields)
-            df.loc[idx, field_to_remove] = None
-            print(f"[ERROR_INJECT] Missing field → row {idx} field '{field_to_remove}' removed")
+            field = random.choice(required_fields)
+            df.loc[idx, field] = None
+            print(f"[ERROR_INJECT] Missing field → row {idx} '{field}' removed")
 
-        # 2️⃣ 숫자 필드 깨기
         elif error_type == "numeric_corrupt":
             field = random.choice(numeric_fields)
             df.loc[idx, field] = "abc_xyz"
-            print(f"[ERROR_INJECT] Corrupted numeric → row {idx} field '{field}' = 'abc_xyz'")
+            print(f"[ERROR_INJECT] Corrupted numeric → row {idx} '{field}'='abc_xyz'")
 
-        # 3️⃣ 날짜 필드 깨기
         elif error_type == "date_corrupt":
             df.loc[idx, "Date_Time"] = "2024-99-99 99:99:99"
-            print(f"[ERROR_INJECT] Corrupted date → row {idx} Date_Time invalid format")
+            print(f"[ERROR_INJECT] Corrupted date → row {idx} invalid")
 
     return df
+
+
+# ---------------------------------------------------------
+# 🔧 체크포인트 파일 처리
+# ---------------------------------------------------------
+CHECKPOINT_FILE = "/app/state/origin_generator_checkpoint.json"
+
+
+def load_last_timestamp(start_time):
+    """체크포인트 없으면 start_time부터 시작"""
+    os.makedirs(os.path.dirname(CHECKPOINT_FILE), exist_ok=True)
+
+    if not os.path.exists(CHECKPOINT_FILE):
+        print("[CHECKPOINT] No checkpoint found. Starting fresh.")
+        return start_time
+
+    try:
+        with open(CHECKPOINT_FILE, "r") as f:
+            data = json.load(f)
+        ts = datetime.strptime(data["last_timestamp"], "%Y-%m-%d %H:%M:%S")
+        print(f"[CHECKPOINT] Resuming from {ts}")
+        return ts
+    except Exception as e:
+        print(f"[CHECKPOINT] Failed to load checkpoint: {e}")
+        return start_time
+
+
+def save_last_timestamp(ts):
+    """현재 생성이 완료된 시점 기록"""
+    os.makedirs(os.path.dirname(CHECKPOINT_FILE), exist_ok=True)
+    try:
+        with open(CHECKPOINT_FILE, "w") as f:
+            json.dump({"last_timestamp": ts.strftime("%Y-%m-%d %H:%M:%S")}, f, indent=2)
+        print(f"[CHECKPOINT] Saved last timestamp = {ts}")
+    except Exception as e:
+        print(f"[CHECKPOINT] Failed to save checkpoint: {e}")
 
 
 # ---------------------------------------------------------
 # 기존 함수들 유지
 # ---------------------------------------------------------
 def clean_output_dir(output_path: str):
-    """output 디렉토리의 .gitkeep을 제외한 파일 모두 삭제"""
-    if not os.path.exists(output_path):
-        os.makedirs(output_path)
-        return
+    """output 디렉토리를 정리 ('.gitkeep' 제외)"""
+    os.makedirs(output_path, exist_ok=True)
 
     removed = 0
     for file in os.listdir(output_path):
-        file_path = os.path.join(output_path, file)
-        if os.path.isfile(file_path) and not file.endswith(".gitkeep"):
-            os.remove(file_path)
+        fp = os.path.join(output_path, file)
+        if os.path.isfile(fp) and not file.endswith(".gitkeep"):
+            os.remove(fp)
             removed += 1
-    print(f"[CLEANUP] {removed}개의 기존 파일 삭제 완료 ('.gitkeep'은 유지됨)")
+    print(f"[CLEANUP] {removed}개의 기존 파일 삭제 완료")
 
 
 def generate_origin_files(
@@ -80,49 +107,46 @@ def generate_origin_files(
     df = df.sort_values('Date_Time').reset_index(drop=True)
 
     start_time = df['Date_Time'].min().replace(second=0, microsecond=0)
-    end_time = df['Date_Time'].max().replace(second=0, microsecond=0) + timedelta(minutes=1)
+    end_time = df['Date_Time'].max().replace(second=0, microsecond=0)
 
-    print(f"[INFO] 총 {len(df)}행, 기간: {start_time} ~ {end_time}")
-    print(f"[INFO] {drop_interval_sec}초마다 파일 생성, 데이터 간격 {row_interval_sec}초 단위")
+    print(f"[INFO] 총 {len(df)}행")
+    print(f"[INFO] 시뮬레이션 기간: {start_time} ~ {end_time}")
+    print(f"[INFO] {drop_interval_sec}초마다 파일 생성")
+    print(f"[INFO] {row_interval_sec}초 단위로 row 분리")
 
-    current_time = start_time
+    # ▶ resume 시간 불러오기
+    current_time = load_last_timestamp(start_time)
 
     while current_time <= end_time:
         next_time = current_time + timedelta(seconds=row_interval_sec)
         chunk = df[(df['Date_Time'] >= current_time) & (df['Date_Time'] < next_time)]
 
         if not chunk.empty:
-            # 🚨 여기서 에러 삽입
             chunk = inject_random_errors(chunk, error_rate=error_rate)
 
-            # 1️⃣ 임시 이름 (uuid)
             temp_name = os.path.join(output_path, str(uuid.uuid4()))
-
-            # 2️⃣ 최종 이름
             ts_str = current_time.strftime("%Y%m%d_%H%M%S")
             final_name = os.path.join(output_path, f"weather_{ts_str}.csv")
 
-            # 3️⃣ 저장
             chunk.to_csv(temp_name, index=False)
-            print(f"[작성중] {temp_name} ({len(chunk)} rows, {current_time}~{next_time})")
-
-            # 4️⃣ rename
             os.rename(temp_name, final_name)
-            print(f"[완료됨] {final_name}")
 
+            print(f"[WRITE] {final_name} ({len(chunk)} rows)")
         else:
-            print(f"[건너뜀] {current_time.strftime('%H:%M:%S')}~{next_time.strftime('%H:%M:%S')} 데이터 없음")
+            print(f"[SKIP] {current_time} ~ {next_time} 데이터 없음")
+
+        # ▶ 현재 시점까지 생성 완료 저장
+        save_last_timestamp(current_time)
 
         current_time = next_time
         time.sleep(drop_interval_sec)
 
-    print("[완료] 모든 origin-data 파일 생성 완료 ✅")
+    print("[DONE] 모든 origin 데이터 생성 완료!")
 
 
 def main():
     parser = argparse.ArgumentParser(description="Weather data simulator")
 
-    # 환경변수 기반 경로/설정
     parser.add_argument("--input", type=str,
                         default=os.getenv("ORIGIN_INPUT", "/app/data/kaggle/weather_data.csv"))
     parser.add_argument("--output", type=str,
@@ -137,7 +161,8 @@ def main():
     args = parser.parse_args()
 
     os.makedirs(args.output, exist_ok=True)
-    clean_output_dir(args.output)
+    # ❗ reset되지 않는 이상 기존 파일을 삭제하지 않도록 변경할 수 있음
+    # clean_output_dir(args.output)
 
     generate_origin_files(
         input_path=args.input,
