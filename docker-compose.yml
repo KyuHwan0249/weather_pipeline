@@ -39,13 +39,18 @@ services:
     hostname: kafka-1
     ports:
       - "9092:9092"
+      - "9991:9991"
+      - "9404:9404"
     networks:
       - project-net
     volumes:
       - ./kafka/server-1.properties:/opt/kafka/config/kraft/server.properties
       - ./kafka/data/broker1:/var/lib/kafka/data
+      - ./jmx:/opt/jmx
     environment:
       KAFKA_HEAP_OPTS: "-Xmx256M -Xms256M"
+      JMX_PORT: 9991
+      KAFKA_OPTS: "-javaagent:/opt/jmx/jmx_prometheus_javaagent.jar=9404:/opt/jmx/kafka-jmx-config.yml"
     command: ["/opt/kafka/bin/kafka-server-start.sh", "/opt/kafka/config/kraft/server.properties"]
     healthcheck:
       test: ["CMD", "bash", "-c", "echo > /dev/tcp/kafka-1/9092"]
@@ -59,13 +64,18 @@ services:
     hostname: kafka-2
     ports:
       - "9093:9092"
+      - "9992:9992"
+      - "9405:9405"
     networks:
       - project-net
     volumes:
       - ./kafka/server-2.properties:/opt/kafka/config/kraft/server.properties
       - ./kafka/data/broker2:/var/lib/kafka/data
+      - ./jmx:/opt/jmx
     environment:
       KAFKA_HEAP_OPTS: "-Xmx256M -Xms256M"
+      JMX_PORT: 9992
+      KAFKA_OPTS: "-javaagent:/opt/jmx/jmx_prometheus_javaagent.jar=9405:/opt/jmx/kafka-jmx-config.yml"
     command: ["/opt/kafka/bin/kafka-server-start.sh", "/opt/kafka/config/kraft/server.properties"]
     healthcheck:
       test: ["CMD", "bash", "-c", "echo > /dev/tcp/kafka-1/9092"]
@@ -79,13 +89,18 @@ services:
     hostname: kafka-3
     ports:
       - "9094:9092"
+      - "9993:9993"
+      - "9406:9406"
     networks:
       - project-net
     volumes:
       - ./kafka/server-3.properties:/opt/kafka/config/kraft/server.properties
       - ./kafka/data/broker3:/var/lib/kafka/data
+      - ./jmx:/opt/jmx
     environment:
       KAFKA_HEAP_OPTS: "-Xmx256M -Xms256M"
+      JMX_PORT: 9993
+      KAFKA_OPTS: "-javaagent:/opt/jmx/jmx_prometheus_javaagent.jar=9406:/opt/jmx/kafka-jmx-config.yml"
     command: ["/opt/kafka/bin/kafka-server-start.sh", "/opt/kafka/config/kraft/server.properties"]
     healthcheck:
       test: ["CMD", "bash", "-c", "echo > /dev/tcp/kafka-1/9092"]
@@ -134,6 +149,45 @@ services:
       - project-net
     depends_on:
       - kafka-init
+
+  kafka-lag-exporter:
+    image: seglo/kafka-lag-exporter:0.8.2
+    container_name: kafka-lag-exporter
+    ports:
+      - "8000:8000"
+    networks:
+      - project-net
+    volumes:
+      - ./kafka-lag-exporter/application.conf:/opt/docker/conf/application.conf
+    restart: always
+
+  prometheus:
+    image: prom/prometheus
+    container_name: prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+    networks:
+      - project-net
+    depends_on:
+      - kafka-lag-exporter
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    ports:
+      - "3000:3000"
+    networks:
+      - project-net
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin  # 초기 비번 admin
+    depends_on:
+      - prometheus
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./dashboards:/var/lib/grafana/dashboards
+      - ./grafana/provisioning:/etc/grafana/provisioning
 
   #############################################################
   # 5) PRODUCER
@@ -448,3 +502,4 @@ networks:
 volumes:
   pgdata:
   spark-checkpoints:
+  grafana-data:
