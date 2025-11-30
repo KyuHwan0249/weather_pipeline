@@ -1,55 +1,65 @@
 import os
 import json
 import time
+import random
 import requests
-import random  # 🎲 랜덤 모듈 추가
 from datetime import datetime
 from kafka import KafkaConsumer, KafkaProducer
 
-# 알람 저장용 DB 모듈 (기존과 동일)
+# DB 저장 함수
 from db.alert_repository import save_alert, update_alert_sent
 
+
 ###############################################
-# CONFIG & CONSTANTS
+# CONFIG
 ###############################################
 BOOTSTRAP_SERVERS = os.getenv("KAFKA_BOOTSTRAP")
-RETRY_TOPIC = os.getenv("TOPIC_RETRY", "retry-data")      # 읽어올 토픽
-ERROR_TOPIC = os.getenv("TOPIC_ERROR", "error-data")      # 실패 시 보낼 토픽
+RETRY_TOPIC = os.getenv("TOPIC_RETRY", "retry-data")
+ERROR_TOPIC = os.getenv("TOPIC_ERROR", "error-data")
 
 SLACK_WEBHOOK_URL = os.getenv("SLACK_WEBHOOK_URL")
-ALERT_INTERVAL_MINUTES = os.getenv("ALERT_INTERVAL_MINUTES", 30)
-HIGH_TEMPERATURE_THRESHOLD = os.getenv("HIGH_TEMPERATURE_THRESHOLD", 31.0)
-LOW_TEMPERATURE_THRESHOLD = os.getenv("LOW_TEMPERATURE_THRESHOLD", -10.0)
-RAINFALL_THRESHOLD = os.getenv("RAINFALL_THRESHOLD", 11.0)
-WIND_SPEED_THRESHOLD = os.getenv("WIND_SPEED_THRESHOLD", 35.0)
-RANDOM_LIMIT = os.getenv("RANDOM_LIMIT", 0.01)
 
-# 쿨다운 상태 관리
+ALERT_INTERVAL_MINUTES = float(os.getenv("ALERT_INTERVAL_MINUTES", 30))
+HIGH_TEMPERATURE_THRESHOLD = float(os.getenv("HIGH_TEMPERATURE_THRESHOLD", 31))
+LOW_TEMPERATURE_THRESHOLD = float(os.getenv("LOW_TEMPERATURE_THRESHOLD", -10))
+RAINFALL_THRESHOLD = float(os.getenv("RAINFALL_THRESHOLD", 11))
+WIND_SPEED_THRESHOLD = float(os.getenv("WIND_SPEED_THRESHOLD", 35))
+RANDOM_LIMIT = float(os.getenv("RANDOM_LIMIT", 0.01))
+
+# alert 쿨다운 상태
 last_alert_time = {}
 
+
 ###############################################
-# Helper Functions
+# Helper: Cooldown
 ###############################################
 def should_alert(location, alert_type, event_time):
-    """쿨다운 체크 로직"""
     key = (location, alert_type)
+
     if key in last_alert_time:
         diff = (event_time - last_alert_time[key]).total_seconds()
         if diff < ALERT_INTERVAL_MINUTES * 60:
             return False
+
     last_alert_time[key] = event_time
     return True
 
-def send_slack(payload):
-    """Slack 전송"""
+
+###############################################
+# Helper: Slack
+###############################################
+def send_slack(payload: str) -> bool:
     try:
         res = requests.post(SLACK_WEBHOOK_URL, json={"text": payload})
         return res.status_code == 200
     except:
         return False
 
+
+###############################################
+# Helper: Alert Type Detection
+###############################################
 def detect_alert_types(row):
-    """임계치 초과 여부 감지"""
     alerts = []
     try:
         t = float(row.get("Temperature_C", -999))
@@ -58,124 +68,167 @@ def detect_alert_types(row):
     except:
         return []
 
-    if t >= float(HIGH_TEMPERATURE_THRESHOLD): alerts.append(("TEMP_HIGH", f"Temperature {t}°C >= {HIGH_TEMPERATURE_THRESHOLD}°C", t, float(HIGH_TEMPERATURE_THRESHOLD)))
-    if t <= float(LOW_TEMPERATURE_THRESHOLD): alerts.append(("TEMP_LOW", f"Temperature {t}°C <= {LOW_TEMPERATURE_THRESHOLD}°C", t, float(LOW_TEMPERATURE_THRESHOLD)))
-    if p >= float(RAINFALL_THRESHOLD): alerts.append(("RAIN_HEAVY", f"Rainfall {p}mm >= {RAINFALL_THRESHOLD}mm", p, float(RAINFALL_THRESHOLD)))
-    if w >= float(WIND_SPEED_THRESHOLD): alerts.append(("WIND_STRONG", f"Wind {w} km/h >= {WIND_SPEED_THRESHOLD} km/h", w, float(WIND_SPEED_THRESHOLD)))
-    
+    if t >= HIGH_TEMPERATURE_THRESHOLD:
+        alerts.append((
+            "TEMP_HIGH",
+            f"Temperature {t}°C >= {HIGH_TEMPERATURE_THRESHOLD}°C",
+            t,
+            HIGH_TEMPERATURE_THRESHOLD
+        ))
+
+    if t <= LOW_TEMPERATURE_THRESHOLD:
+        alerts.append((
+            "TEMP_LOW",
+            f"Temperature {t}°C <= {LOW_TEMPERATURE_THRESHOLD}°C",
+            t,
+            LOW_TEMPERATURE_THRESHOLD
+        ))
+
+    if p >= RAINFALL_THRESHOLD:
+        alerts.append((
+            "RAIN_HEAVY",
+            f"Rainfall {p}mm >= {RAINFALL_THRESHOLD}mm",
+            p,
+            RAINFALL_THRESHOLD
+        ))
+
+    if w >= WIND_SPEED_THRESHOLD:
+        alerts.append((
+            "WIND_STRONG",
+            f"Wind {w} km/h >= {WIND_SPEED_THRESHOLD} km/h",
+            w,
+            WIND_SPEED_THRESHOLD
+        ))
+
     return alerts
 
-###############################################
-# Kafka Setup
-###############################################
-consumer = KafkaConsumer(
-    RETRY_TOPIC,
-    bootstrap_servers=BOOTSTRAP_SERVERS.split(","),
-    group_id="retry-consumer-group",
-    key_deserializer=lambda k: k.decode("utf-8") if k else None,
-    value_deserializer=lambda v: json.loads(v.decode("utf-8")),
-    enable_auto_commit=True,
-    auto_offset_reset="latest"
-)
-
-error_producer = KafkaProducer(
-    bootstrap_servers=BOOTSTRAP_SERVERS.split(","),
-    key_serializer=lambda k: k.encode("utf-8") if k else None,
-    value_serializer=lambda v: json.dumps(v).encode("utf-8")
-)
-
-print(f"🚀 Consumer3 Started with 50% CHAOS MODE. Polling '{RETRY_TOPIC}'...")
 
 ###############################################
-# MAIN LOOP
+# Kafka Factories
 ###############################################
-while True:
-    try:
-        polled = consumer.poll(timeout_ms=1000)
+def create_consumer():
+    return KafkaConsumer(
+        RETRY_TOPIC,
+        bootstrap_servers=BOOTSTRAP_SERVERS.split(","),
+        group_id="retry-consumer-group",
+        key_deserializer=lambda k: k.decode("utf-8") if k else None,
+        value_deserializer=lambda v: json.loads(v.decode("utf-8")),
+        enable_auto_commit=True,
+        auto_offset_reset="latest"
+    )
 
-        for tp, messages in polled.items():
-            for msg in messages:
-                data = msg.value
-                location = data.get("Location", "unknown")
-                
-                # 재시도 횟수 초기화
-                retry_count = int(data.get("retry", 0)) + 1 
 
-                try:
-                    print(f"\n▶ Processing Retry ({retry_count}): {location}")
+def create_error_producer():
+    return KafkaProducer(
+        bootstrap_servers=BOOTSTRAP_SERVERS.split(","),
+        key_serializer=lambda k: k.encode("utf-8") if k else None,
+        value_serializer=lambda v: json.dumps(v).encode("utf-8")
+    )
 
-                    # ====================================================
-                    # 🎲 [CHAOS ZONE] 50% 확률로 강제 에러 발생
-                    # ====================================================
-                    if random.random() < float(RANDOM_LIMIT):
-                        print(f"   💣 [CHAOS] Simulating Intentional Failure for {location}...")
-                        raise Exception("Intentional Chaos Error (Simulated 50% Failure)")
-                    # ====================================================
-                    
-                    # 날짜 파싱
-                    event_time = datetime.fromisoformat(data["event_time"])
-                    
-                    # 이상 징후 감지
-                    triggered = detect_alert_types(data)
-                    
-                    if not triggered:
-                        print("   ↳ No alert condition met.")
-                        continue
 
-                    for alert_type, reason, value, threshold in triggered:
-                        if not should_alert(location, alert_type, event_time):
-                            print(f"   ↳ Cooldown skipping: {alert_type}")
-                            continue
-                        
-                        alert_id = save_alert(
-                            location=location,
-                            alert_type=alert_type,
-                            alert_reason=reason,
-                            event_time=event_time,
-                            value=value,
-                            threshold=threshold,
-                            raw_row=data,
-                            slack_sent=False,
-                            retry_count=retry_count
-                        )
-                        
-                        payload = (
-                            f"♻️ *Retry Alert ({retry_count})*\n"
-                            f"Location: {location}\n"
-                            f"{reason}\n"
-                            f"Time: {event_time}"
-                        )
-                        
-                        if send_slack(payload):
-                            update_alert_sent(alert_id)
-                            print(f"   ✅ Retry Success: {alert_type} sent.")
-                        else:
-                            print(f"   ⚠️ Retry DB Saved, Slack Failed.")
+###############################################
+# Core Logic for each message
+###############################################
+def handle_message(data, retry_count, error_producer):
+    location = data.get("Location", "unknown")
 
-                except Exception as logic_error:
-                    # ==========================================
-                    # [에러 발생 시 -> Error Topic 전송]
-                    # ==========================================
-                    print(f"❌ Processing Failed: {logic_error}")
-                    
-                    error_payload = {
-                        "error_type": "CONSUMER3_RETRY_FAIL",
-                        "error_reason": str(logic_error),  # "Intentional Chaos Error..." 가 담김
-                        "raw_row": data,
-                        "file_name": "processed_by_consumer3",
-                        "retry_count": retry_count
-                    }
+    print(f"\n▶ Processing Retry ({retry_count}): {location}")
 
-                    error_producer.send(
-                        ERROR_TOPIC,
-                        key=location,
-                        value=error_payload
-                    )
-                    
-                    # 주기적으로 한번씩 flush 호출
-                    # error_producer.flush() 
-                    print(f"   ➡️ Forwarded to {ERROR_TOPIC} with retry_count={retry_count}")
+    # 🔥 Chaos (랜덤 실패 시뮬레이션)
+    if random.random() < RANDOM_LIMIT:
+        raise Exception("Intentional Chaos Error (Simulated Failure)")
 
-    except Exception as e:
-        print(f"❌ Critical Consumer Error: {e}")
-        time.sleep(3)
+    # 날짜 파싱
+    event_time = datetime.fromisoformat(data["event_time"])
+
+    # 이상 탐지
+    triggered = detect_alert_types(data)
+    if not triggered:
+        print("   ↳ No alert condition met.")
+        return
+
+    # 각각의 alert type 별 처리
+    for alert_type, reason, value, threshold in triggered:
+        if not should_alert(location, alert_type, event_time):
+            print(f"   ↳ Cooldown Skipped: {alert_type}")
+            continue
+
+        alert_id = save_alert(
+            location=location,
+            alert_type=alert_type,
+            alert_reason=reason,
+            event_time=event_time,
+            value=value,
+            threshold=threshold,
+            raw_row=data,
+            slack_sent=False,
+            retry_count=retry_count
+        )
+
+        payload = (
+            f"♻️ *Retry Alert ({retry_count})*\n"
+            f"Location: {location}\n"
+            f"{reason}\n"
+            f"Time: {event_time}"
+        )
+
+        if send_slack(payload):
+            update_alert_sent(alert_id)
+            print(f"   ✅ Retry Success: {alert_type} sent.")
+        else:
+            print(f"   ⚠️ Slack Failed (DB updated)")
+
+
+###############################################
+# Error forwarding
+###############################################
+def forward_to_error_topic(location, data, retry_count, err, error_producer):
+    print(f"❌ Processing Failed: {err}")
+
+    error_payload = {
+        "error_type": "CONSUMER3_RETRY_FAIL",
+        "error_reason": str(err),
+        "raw_row": data,
+        "file_name": "processed_by_consumer3",
+        "retry_count": retry_count
+    }
+
+    error_producer.send(ERROR_TOPIC, key=location, value=error_payload)
+
+    print(f"   ➡️ Forwarded to {ERROR_TOPIC} (retry_count={retry_count})")
+
+
+###############################################
+# Main Loop
+###############################################
+def run_consumer():
+    print(f"🚀 Retry Consumer Started! Topic='{RETRY_TOPIC}' (Chaos={RANDOM_LIMIT*100}%)")
+
+    consumer = create_consumer()
+    error_producer = create_error_producer()
+
+    while True:
+        try:
+            polled = consumer.poll(timeout_ms=1000)
+
+            for tp, messages in polled.items():
+                for msg in messages:
+                    data = msg.value
+                    location = data.get("Location", "unknown")
+                    retry_count = int(data.get("retry", 0)) + 1
+
+                    try:
+                        handle_message(data, retry_count, error_producer)
+                    except Exception as logic_error:
+                        forward_to_error_topic(location, data, retry_count, logic_error, error_producer)
+
+        except Exception as e:
+            print(f"❌ Critical Consumer Error: {e}")
+            time.sleep(3)
+
+
+###############################################
+# Entry Point
+###############################################
+if __name__ == "__main__":
+    run_consumer()

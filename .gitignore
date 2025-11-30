@@ -6,6 +6,7 @@ kafka/data/broker3/*
 minio-data/*
 consumer-app-alarm/checkpoints/*
 airflow/logs/*
+pgdata/
 
 !origin-data/.gitkeep
 !minio-data/.gitkeep
