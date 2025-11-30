@@ -1,3 +1,4 @@
+import argparse
 import json
 import time
 import random
@@ -5,73 +6,166 @@ import threading
 from datetime import datetime
 from kafka import KafkaProducer
 
-# 컨테이너 내부 통신이므로 서비스명(kafka-1) 사용
 BOOTSTRAP_SERVERS = ["kafka-1:9092", "kafka-2:9092", "kafka-3:9092"]
-TOPIC_NAME = "weather-data"
-TOTAL_MESSAGES = 1000000
-NUM_THREADS = 25
 
-LOCATIONS = ["Seoul", "New York", "London", "Tokyo", "Paris", "Busan", "Jeju"]
+LOCATIONS = [
+    "Seoul", "New York", "London", "Tokyo",
+    "Paris", "Busan", "Jeju", "Dallas", "San Diego"
+]
 
+# ------------------------------------------------
+# Producer
+# ------------------------------------------------
 def get_producer():
     return KafkaProducer(
         bootstrap_servers=BOOTSTRAP_SERVERS,
         key_serializer=lambda k: k.encode("utf-8"),
         value_serializer=lambda v: json.dumps(v).encode("utf-8"),
-        linger_ms=5,
-        batch_size=32768
+        acks=0,
+        linger_ms=3,
+        batch_size=131072
     )
 
-def generate_weather_data():
-    now = datetime.now().isoformat()
+
+# ------------------------------------------------
+# weather / retry 스키마
+# ------------------------------------------------
+def generate_weather_like(retry=False):
+    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     location = random.choice(LOCATIONS)
-    
-    # 50% 확률로 이상치 생성 (알람/에러 유발)
-    if random.random() < 0.5:
-        temp = random.choice([35.5, -15.0]) 
-        precip = random.choice([0.0, 50.5]) 
-    else:
-        temp = round(random.uniform(10, 25), 2)
-        precip = 0.0
 
     return {
         "Location": location,
         "Date_Time": now,
-        "Temperature_C": temp,
-        "Humidity_pct": round(random.uniform(30, 90), 1),
-        "Precipitation_mm": precip,
-        "Wind_Speed_kmh": round(random.uniform(0, 15), 1),
-        "retry": 0
+        "Temperature_C": round(random.uniform(-20, 40), 2),
+        "Humidity_pct": round(random.uniform(20, 90), 1),
+        "Precipitation_mm": round(random.uniform(0, 50), 1),
+        "Wind_Speed_kmh": round(random.uniform(0, 20), 1),
+        "retry": random.randint(1, 5) if retry else 0
     }
 
-def send_messages(thread_id, count):
-    producer = get_producer()
-    print(f"🧵 Thread-{thread_id} started")
-    
-    for i in range(count):
-        data = generate_weather_data()
-        producer.send(TOPIC_NAME, key=data["Location"], value=data)
-        # 속도 제한 없이 최대한 빠르게 전송
-        
-    producer.flush()
-    print(f"✅ Thread-{thread_id} finished")
 
+# ------------------------------------------------
+# error 스키마들
+# ------------------------------------------------
+def generate_error_missing_field():
+    return {
+        "error_type": "MISSING_FIELD",
+        "error_reason": "Missing required field: Humidity_pct",
+        "raw_row": {
+            "Location": random.choice(LOCATIONS),
+            "Date_Time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "Temperature_C": str(round(random.uniform(10, 35), 3)),
+            "Humidity_pct": "",
+            "Precipitation_mm": str(round(random.uniform(0, 15), 3)),
+            "Wind_Speed_kmh": str(round(random.uniform(0, 15), 3)),
+            "retry": 0
+        },
+        "timestamp": time.time(),
+        "file_name": "stress_error_test.csv",
+        "retry_count": 0
+    }
+
+
+def generate_error_type_error():
+    return {
+        "error_type": "TYPE_ERROR",
+        "error_reason": "Invalid float field: Humidity_pct='abc_xyz'",
+        "raw_row": {
+            "Location": random.choice(LOCATIONS),
+            "Date_Time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "Temperature_C": str(round(random.uniform(10, 35), 5)),
+            "Humidity_pct": "abc_xyz",
+            "Precipitation_mm": str(round(random.uniform(0, 20), 6)),
+            "Wind_Speed_kmh": str(round(random.uniform(0, 10), 3)),
+            "retry": 0
+        },
+        "timestamp": time.time(),
+        "file_name": "stress_error_test.csv",
+        "retry_count": 0
+    }
+
+
+def generate_error():
+    return generate_error_missing_field() if random.random() < 0.5 else generate_error_type_error()
+
+
+# ------------------------------------------------
+# topic router
+# ------------------------------------------------
+def generate_message(topic):
+    if topic == "weather-data":
+        return generate_weather_like(retry=False)
+    if topic == "retry-data":
+        return generate_weather_like(retry=True)
+    if topic == "error-data":
+        return generate_error()
+    raise ValueError(f"Unknown topic: {topic}")
+
+
+# ------------------------------------------------
+# worker: TPS 제한 + 무한 루프
+# ------------------------------------------------
+def worker(thread_id, topic, tps_per_thread):
+    producer = get_producer()
+    print(f"🧵 Thread-{thread_id} started | Target TPS={tps_per_thread}")
+
+    while True:
+        start_sec = time.time()
+        sent_this_sec = 0
+
+        while sent_this_sec < tps_per_thread:
+            msg = generate_message(topic)
+            key = msg.get("Location", "default")
+            producer.send(topic, key=key, value=msg)
+            sent_this_sec += 1
+
+        producer.flush()
+
+        elapsed = time.time() - start_sec
+        if elapsed < 1:
+            time.sleep(1 - elapsed)
+
+
+# ------------------------------------------------
+# main
+# ------------------------------------------------
 def main():
-    print(f"🔥 Starting Attack: {TOTAL_MESSAGES} msgs")
-    threads = []
-    msgs_per_thread = TOTAL_MESSAGES // NUM_THREADS
-    
-    start = time.time()
-    for i in range(NUM_THREADS):
-        t = threading.Thread(target=send_messages, args=(i, msgs_per_thread))
+    parser = argparse.ArgumentParser(description="Kafka Continuous TPS Stress Tester")
+
+    parser.add_argument("-t", "--topic", required=True, help="Topic name")
+    parser.add_argument("-T", "--threads", required=True, type=int, help="Thread count")
+    parser.add_argument("-r", "--rate", required=True, type=int, help="Messages per second (global)")
+
+    args = parser.parse_args()
+
+    topic = args.topic
+    threads = args.threads
+    rate = args.rate
+
+    # thread당 TPS 계산
+    tps_per_thread = rate // threads
+
+    print(f"\n🔥 Continuous Stress Test Started")
+    print(f"   Topic: {topic}")
+    print(f"   Threads: {threads}")
+    print(f"   Global TPS: {rate}")
+    print(f"   TPS per thread: {tps_per_thread}\n")
+    print("🔁 Running infinitely... Press CTRL+C to stop.\n")
+
+    thread_list = []
+    for i in range(threads):
+        t = threading.Thread(target=worker, args=(i, topic, tps_per_thread))
+        t.daemon = True
         t.start()
-        threads.append(t)
-        
-    for t in threads:
-        t.join()
-        
-    end = time.time()
-    print(f"🚀 Done in {end - start:.2f} sec (Throughput: {TOTAL_MESSAGES / (end - start):.0f} msg/s)")
+        thread_list.append(t)
+
+    try:
+        while True:
+            time.sleep(1)
+    except KeyboardInterrupt:
+        print("\n🛑 Stopping stress test...")
+
 
 if __name__ == "__main__":
     main()

@@ -381,7 +381,63 @@ services:
       TOPIC_RETRY: ${TOPIC_RETRY}
       TOPIC_ERROR: ${TOPIC_ERROR}
       SLACK_WEBHOOK_URL: ${SLACK_WEBHOOK_URL}
+      RANDOM_LIMIT: ${RANDOM_LIMIT}
+  consumer-app-retry-2:
+    build: ./consumer-app-retry
+    container_name: consumer-app-retry-2
+    networks:
+      - project-net
+    volumes:
+      - ./consumer-app-retry:/app
+    depends_on:
+      kafka-1:
+        condition: service_healthy
+      kafka-2:
+        condition: service_healthy
+      kafka-3:
+        condition: service_healthy
+      postgres:
+        condition: service_started
+    environment:
+      POSTGRES_HOST: ${POSTGRES_HOST}
+      POSTGRES_PORT: ${POSTGRES_PORT}
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      KAFKA_BOOTSTRAP: ${KAFKA_BOOTSTRAP}
+      TOPIC_RETRY: ${TOPIC_RETRY}
+      TOPIC_ERROR: ${TOPIC_ERROR}
+      SLACK_WEBHOOK_URL: ${SLACK_WEBHOOK_URL}
+      RANDOM_LIMIT: ${RANDOM_LIMIT}
 
+
+  consumer-app-retry-3:
+    build: ./consumer-app-retry
+    container_name: consumer-app-retry-3
+    networks:
+      - project-net
+    volumes:
+      - ./consumer-app-retry:/app
+    depends_on:
+      kafka-1:
+        condition: service_healthy
+      kafka-2:
+        condition: service_healthy
+      kafka-3:
+        condition: service_healthy
+      postgres:
+        condition: service_started
+    environment:
+      POSTGRES_HOST: ${POSTGRES_HOST}
+      POSTGRES_PORT: ${POSTGRES_PORT}
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      KAFKA_BOOTSTRAP: ${KAFKA_BOOTSTRAP}
+      TOPIC_RETRY: ${TOPIC_RETRY}
+      TOPIC_ERROR: ${TOPIC_ERROR}
+      SLACK_WEBHOOK_URL: ${SLACK_WEBHOOK_URL}
+      RANDOM_LIMIT: ${RANDOM_LIMIT}
   #############################################################
   # 11) CONSUMER ERROR
   #############################################################

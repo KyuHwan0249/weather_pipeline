@@ -12,7 +12,9 @@ RUN apt-get update && \
 RUN pip install --no-cache-dir \
     kafka-python \
     psycopg2-binary \
-    requests
+    requests \
+    python-dotenv \
+    SQLAlchemy==2.0.36
 
 # 작업 디렉토리
 WORKDIR /app

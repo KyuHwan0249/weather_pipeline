@@ -1,8 +1,12 @@
+# main.py
+
 import os
-from kafka import KafkaConsumer
 import json
 import time
-from db import insert_error_row
+from kafka import KafkaConsumer
+
+from db.database import SessionLocal
+from db.crud import insert_error_row
 
 BOOTSTRAP = os.getenv("KAFKA_BOOTSTRAP")
 TOPIC = os.getenv("TOPIC_ERROR", "error-data")
@@ -28,12 +32,14 @@ def main():
     consumer = connect_consumer()
     print("🔥 Error Consumer started. Listening to error-data...")
 
+    db = SessionLocal()  # Pool에서 하나 가져옴
+
     for msg in consumer:
         try:
             error_data = msg.value
             print(f"[RECV] Error Message: {error_data}")
 
-            insert_error_row(error_data)
+            insert_error_row(db, error_data)
 
             print("💾 Saved to Postgres")
 

@@ -1,2 +1,4 @@
 kafka-python
 psycopg2-binary
+SQLAlchemy==2.0.36
+python-dotenv
