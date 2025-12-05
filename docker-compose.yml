@@ -46,7 +46,7 @@ services:
     volumes:
       - ./kafka/kraft-1:/opt/kafka/config/kraft
       - kafka-1-data:/var/lib/kafka/data
-      - ./jmx:/opt/kafka/jmx
+      - ./jmx:/opt/jmx
     environment:
       KAFKA_HEAP_OPTS: "-Xmx256M -Xms256M"
       JMX_PORT: 9991
