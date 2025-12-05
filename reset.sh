@@ -20,13 +20,6 @@ safe_clear() {
 }
 
 echo ""
-echo "🗑 Clearing Kafka data folders..."
-safe_clear "$(pwd)/kafka/data/broker1"
-safe_clear "$(pwd)/kafka/data/broker2"
-safe_clear "$(pwd)/kafka/data/broker3"
-
-
-echo ""
 echo "🧱 Reformatting Kafka storage with unified cluster ID..."
 
 # FORMAT FUNCTION
@@ -49,6 +42,9 @@ format_kafka "broker1" "server-1.properties"
 format_kafka "broker2" "server-2.properties"
 format_kafka "broker3" "server-3.properties"
 
+sudo chown -R 1001:1001 kafka/data/broker1
+sudo chown -R 1001:1001 kafka/data/broker2
+sudo chown -R 1001:1001 kafka/data/broker3
 
 echo ""
 echo "🗑 Clearing MinIO data..."

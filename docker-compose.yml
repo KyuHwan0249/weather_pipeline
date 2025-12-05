@@ -45,7 +45,7 @@ services:
       - project-net
     volumes:
       - ./kafka/server-1.properties:/opt/kafka/config/kraft/server.properties
-      - ./kafka/data/broker1:/var/lib/kafka/data
+      - kafka-1-data:/var/lib/kafka/data
       - ./jmx:/opt/jmx
     environment:
       KAFKA_HEAP_OPTS: "-Xmx256M -Xms256M"
@@ -70,7 +70,7 @@ services:
       - project-net
     volumes:
       - ./kafka/server-2.properties:/opt/kafka/config/kraft/server.properties
-      - ./kafka/data/broker2:/var/lib/kafka/data
+      - kafka-2-data:/var/lib/kafka/data
       - ./jmx:/opt/jmx
     environment:
       KAFKA_HEAP_OPTS: "-Xmx256M -Xms256M"
@@ -95,7 +95,7 @@ services:
       - project-net
     volumes:
       - ./kafka/server-3.properties:/opt/kafka/config/kraft/server.properties
-      - ./kafka/data/broker3:/var/lib/kafka/data
+      - kafka-3-data:/var/lib/kafka/data
       - ./jmx:/opt/jmx
     environment:
       KAFKA_HEAP_OPTS: "-Xmx256M -Xms256M"
@@ -559,3 +559,6 @@ volumes:
   pgdata:
   spark-checkpoints:
   grafana-data:
+  kafka-1-data:
+  kafka-2-data:
+  kafka-3-data:
