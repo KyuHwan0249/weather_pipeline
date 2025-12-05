@@ -44,9 +44,9 @@ services:
     networks:
       - project-net
     volumes:
-      - ./kafka/server-1.properties:/opt/kafka/config/kraft/server.properties
+      - ./kafka/kraft-1:/opt/kafka/config/kraft
       - kafka-1-data:/var/lib/kafka/data
-      - ./jmx:/opt/jmx
+      - ./jmx:/opt/kafka/jmx
     environment:
       KAFKA_HEAP_OPTS: "-Xmx256M -Xms256M"
       JMX_PORT: 9991
@@ -69,7 +69,7 @@ services:
     networks:
       - project-net
     volumes:
-      - ./kafka/server-2.properties:/opt/kafka/config/kraft/server.properties
+      - ./kafka/kraft-2:/opt/kafka/config/kraft
       - kafka-2-data:/var/lib/kafka/data
       - ./jmx:/opt/jmx
     environment:
@@ -94,7 +94,7 @@ services:
     networks:
       - project-net
     volumes:
-      - ./kafka/server-3.properties:/opt/kafka/config/kraft/server.properties
+      - ./kafka/kraft-3:/opt/kafka/config/kraft
       - kafka-3-data:/var/lib/kafka/data
       - ./jmx:/opt/jmx
     environment:
@@ -158,7 +158,7 @@ services:
     networks:
       - project-net
     volumes:
-      - ./kafka-lag-exporter/application.conf:/opt/docker/conf/application.conf
+      - ./kafka-lag-exporter:/opt/docker/conf
     restart: always
 
   prometheus:
@@ -167,7 +167,7 @@ services:
     ports:
       - "9090:9090"
     volumes:
-      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./prometheus:/etc/prometheus
     networks:
       - project-net
     depends_on:
