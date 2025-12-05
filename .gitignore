@@ -1,19 +1,40 @@
 .env
-origin-data/*
+
+# Kafka
 kafka/data/broker1/*
 kafka/data/broker2/*
 kafka/data/broker3/*
+!kafka/data/broker1/.gitkeep
+!kafka/data/broker2/.gitkeep
+!kafka/data/broker3/.gitkeep
+
+# MinIO
 minio-data/*
-consumer-app-alarm/checkpoints/*
-airflow/logs/*
-pgdata/
+!minio-data/.gitkeep
+
+# Spark checkpoints
+spark-checkpoints/*
+!spark-checkpoints/.gitkeep
+
+# Origin data & generator
+origin-data/*
+!origin-data/.gitkeep
+
+create-origin-data-app/state/*
+!create-origin-data-app/state/.gitkeep
+
+# Producers
 producer-app/producer_checkpoint.json
 producer-app/region_partition_map.json
-create-origin-data-app/state/origin_generator_checkpoint.json
 
-!origin-data/.gitkeep
-!minio-data/.gitkeep
-!consumer-app-alarm/checkpoints/.gitkeep
+# Airflow
+airflow/logs/*
 !airflow/logs/.gitkeep
-!airflow/dags/.gitkeep 
+airflow/dags/*
+!airflow/dags/.gitkeep
+airflow/plugins/*
 !airflow/plugins/.gitkeep
+
+# Postgres
+pgdata/*
+!pgdata/.gitkeep

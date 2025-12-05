@@ -11,76 +11,85 @@ CLUSTER_ID=$(uuidgen)
 echo "📌 Using cluster ID: $CLUSTER_ID"
 
 
-echo ""
-echo "🗑 Clearing Kafka data..."
-docker run --rm -v $(pwd)/kafka/data/broker1:/data busybox sh -c "rm -rf /data/*"
-docker run --rm -v $(pwd)/kafka/data/broker2:/data busybox sh -c "rm -rf /data/*"
-docker run --rm -v $(pwd)/kafka/data/broker3:/data busybox sh -c "rm -rf /data/*"
+# Function to safely clear folder contents except .gitkeep
+safe_clear() {
+  TARGET=$1
+  echo "🗑 Clearing $TARGET ..."
+  docker run --rm -v $TARGET:/data busybox sh -c \
+    "find /data -mindepth 1 ! -name '.gitkeep' -exec rm -rf {} +"
+}
 
 echo ""
-echo "🧱 Reformatting Kafka storage with same cluster ID..."
-
-docker run --rm \
-  -v $(pwd)/kafka/data/broker1:/var/lib/kafka/data \
-  -v $(pwd)/kafka/server-1.properties:/opt/kafka/config/kraft/server.properties \
-  apache/kafka:3.7.0 \
-  bash -c "/opt/kafka/bin/kafka-storage.sh format \
-    -t $CLUSTER_ID \
-    -c /opt/kafka/config/kraft/server.properties"
+echo "🗑 Clearing Kafka data folders..."
+safe_clear "$(pwd)/kafka/data/broker1"
+safe_clear "$(pwd)/kafka/data/broker2"
+safe_clear "$(pwd)/kafka/data/broker3"
 
 
-docker run --rm \
-  -v $(pwd)/kafka/data/broker2:/var/lib/kafka/data \
-  -v $(pwd)/kafka/server-2.properties:/opt/kafka/config/kraft/server.properties \
-  apache/kafka:3.7.0 \
-  bash -c "/opt/kafka/bin/kafka-storage.sh format \
-    -t $CLUSTER_ID \
-    -c /opt/kafka/config/kraft/server.properties"
+echo ""
+echo "🧱 Reformatting Kafka storage with unified cluster ID..."
 
+# FORMAT FUNCTION
+format_kafka() {
+  BROKER=$1
+  PROP=$2
 
-docker run --rm \
-  -v $(pwd)/kafka/data/broker3:/var/lib/kafka/data \
-  -v $(pwd)/kafka/server-3.properties:/opt/kafka/config/kraft/server.properties \
-  apache/kafka:3.7.0 \
-  bash -c "/opt/kafka/bin/kafka-storage.sh format \
-    -t $CLUSTER_ID \
-    -c /opt/kafka/config/kraft/server.properties"
+  echo "⚙ Formatting $BROKER ..."
+  docker run --rm \
+    -v $(pwd)/kafka/data/$BROKER:/var/lib/kafka/data \
+    -v $(pwd)/kafka/$PROP:/opt/kafka/config/kraft/server.properties \
+    apache/kafka:3.7.0 \
+    bash -c "/opt/kafka/bin/kafka-storage.sh format \
+      -t $CLUSTER_ID \
+      -c /opt/kafka/config/kraft/server.properties \
+      --ignore-formatted"
+}
+
+format_kafka "broker1" "server-1.properties"
+format_kafka "broker2" "server-2.properties"
+format_kafka "broker3" "server-3.properties"
 
 
 echo ""
 echo "🗑 Clearing MinIO data..."
-docker run --rm -v $(pwd)/minio-data:/data busybox sh -c "rm -rf /data/*"
+safe_clear "$(pwd)/minio-data"
+
 
 echo ""
 echo "🗑 Clearing Postgres data..."
-docker run --rm -v $(pwd)/pgdata:/var/lib/postgresql/data busybox sh -c "rm -rf /var/lib/postgresql/data/*"
+safe_clear "$(pwd)/pgdata"
+
 
 echo ""
 echo "🗑 Clearing Spark checkpoints..."
-docker run --rm -v $(pwd)/spark-checkpoints:/data busybox sh -c "rm -rf /data/*"
+safe_clear "$(pwd)/spark-checkpoints"
+
 
 echo ""
-echo "🗑 Clearing Origin data..."
-docker run --rm -v $(pwd)/origin-data:/data busybox sh -c "rm -rf /data/*"
+echo "🗑 Clearing Origin data folder..."
+safe_clear "$(pwd)/origin-data"
+
 
 echo ""
 echo "🗑 Clearing Airflow logs..."
-docker run --rm -v $(pwd)/airflow/logs:/data busybox sh -c "rm -rf /data/*"
+safe_clear "$(pwd)/airflow/logs"
+
 
 echo ""
-echo "🗑 Clearing Producer checkpoint..."
-rm -f producer-app/producer_checkpoint.json
-echo "🗑 Clearing Region map..."
-rm -f producer-app/region_partition_map.json
+echo "🗑 Clearing Producer checkpoints..."
+rm -f producer-app/producer_checkpoint.json || true
+rm -f producer-app/region_partition_map.json || true
+
 
 echo "🗑 Clearing Origin Generator checkpoint..."
-docker run --rm -v $(pwd)/create-origin-data-app/state:/data busybox sh -c "rm -f /data/origin_generator_checkpoint.json"
+safe_clear "$(pwd)/create-origin-data-app/state"
+
 
 echo "🗑 Clearing Origin output files..."
-rm -f origin-data/*
+rm -f origin-data/* || true
+
 
 echo ""
 echo "🎉 Reset complete!"
 echo "▶ Run: docker compose up -d"
-echo "   Kafka cluster reformatted with unified cluster ID: $CLUSTER_ID"
-echo "   Airflow will auto-init because Postgres is empty."
+echo "   Kafka cluster reformatted with cluster ID: $CLUSTER_ID"
