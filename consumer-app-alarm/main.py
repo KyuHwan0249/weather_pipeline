@@ -140,9 +140,6 @@ def detect_alert_types(row, cfg):
 def create_batch_processor(cfg, retry_producer):
 
     def process_window_batch(df, batch_id):
-        """
-        ⚠ 중요: df.collect() 사용하지 않고, toLocalIterator()로 스트리밍하게 처리
-        """
         print(f"[BATCH {batch_id}] Starting batch processing...")
 
         # df: columns = [window, Location, rows]
