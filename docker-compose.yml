@@ -507,7 +507,7 @@ services:
     volumes:
       - ./airflow/entrypoint-init.sh:/opt/airflow/entrypoint-init.sh
       - ./airflow/dags:/opt/airflow/dags
-      - ./airflow/logs:/opt/airflow/logs
+      - airflow-logs:/opt/airflow/logs
       - ./airflow/plugins:/opt/airflow/plugins
 
   airflow-webserver:
@@ -524,7 +524,7 @@ services:
       AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
     volumes:
       - ./airflow/dags:/opt/airflow/dags
-      - ./airflow/logs:/opt/airflow/logs
+      - airflow-logs:/opt/airflow/logs
       - ./airflow/plugins:/opt/airflow/plugins
     command: ["airflow", "webserver"]
     ports:
@@ -542,7 +542,7 @@ services:
       AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
     volumes:
       - ./airflow/dags:/opt/airflow/dags
-      - ./airflow/logs:/opt/airflow/logs
+      - airflow-logs:/opt/airflow/logs
       - ./airflow/plugins:/opt/airflow/plugins
     command: ["airflow", "scheduler"]
 
@@ -562,3 +562,4 @@ volumes:
   kafka-1-data:
   kafka-2-data:
   kafka-3-data:
+  airflow-logs:
