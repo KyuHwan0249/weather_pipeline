@@ -33,6 +33,26 @@ Slack 알림 → Parquet/PostgreSQL 저장 → (Batch ETL 진행 중) → 시각
 
 ---
 
+## ✅ Getting Started
+
+### 1) Clone & basic setup
+```bash
+git clone {https-path}
+cd weather_pipeline
+cp .env-tmp .env
+docker compose up -d
+```
+
+### 2) (Optional) Reset everything (only if you run into issues)
+컨테이너가 안 뜨거나, 볼륨/권한/데이터가 꼬였을 때 실행하세요. 
+(추가로 데이터를 초기화 하고 싶을때 사용합니다.)
+```bash
+sh ./reset.sh
+docker compose up -d
+```
+
+---
+
 ## 📂 Directory Structure
 
 ```

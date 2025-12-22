@@ -34,4 +34,3 @@ airflow/dags/*
 !airflow/dags/.gitkeep
 airflow/plugins/*
 !airflow/plugins/.gitkeep
-
