@@ -35,6 +35,3 @@ airflow/dags/*
 airflow/plugins/*
 !airflow/plugins/.gitkeep
 
-# Postgres
-pgdata/*
-!pgdata/.gitkeep

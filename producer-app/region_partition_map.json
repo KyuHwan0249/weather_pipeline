@@ -1,12 +1,12 @@
 {
-  "Phoenix": 0,
-  "Houston": 1,
-  "Los Angeles": 2,
-  "San Antonio": 3,
-  "San Diego": 4,
-  "Dallas": 5,
+  "Houston": 0,
+  "Los Angeles": 1,
+  "San Antonio": 2,
+  "San Diego": 3,
+  "Dallas": 4,
+  "Phoenix": 5,
   "Philadelphia": 6,
-  "San Jose": 7,
-  "Chicago": 8,
+  "Chicago": 7,
+  "San Jose": 8,
   "New York": 9
 }

@@ -54,14 +54,20 @@ services:
       # [수정됨] 클러스터 ID를 고정하여 모든 브로커가 동일한 ID를 갖게 함
       KAFKA_CLUSTER_ID: "MkU3OEVBNTcwNTJENDM2Qk"
     # [수정됨] 실행 시 meta.properties가 없으면 포맷팅 수행 후 실행
-    command: >
-      bash -c "
+    command: |
+      bash -c '
+      set -e
+
       if [ ! -f /var/lib/kafka/data/meta.properties ]; then
-        echo 'Example Project: Formatting Kafka Storage...'
-        /opt/kafka/bin/kafka-storage.sh format -t $${KAFKA_CLUSTER_ID} -c /opt/kafka/config/kraft/server.properties --ignore-formatted
+        echo "Example Project: Formatting Kafka Storage..."
+        /opt/kafka/bin/kafka-storage.sh format \
+          -t "$KAFKA_CLUSTER_ID" \
+          -c /opt/kafka/config/kraft/server.properties \
+          --ignore-formatted
       fi
-      /opt/kafka/bin/kafka-server-start.sh /opt/kafka/config/kraft/server.properties
-      "
+
+      exec /opt/kafka/bin/kafka-server-start.sh /opt/kafka/config/kraft/server.properties
+      '
     healthcheck:
       test: ["CMD", "bash", "-c", "echo > /dev/tcp/kafka-1/9092"]
       interval: 5s
@@ -88,14 +94,20 @@ services:
       KAFKA_OPTS: "-javaagent:/opt/jmx/jmx_prometheus_javaagent.jar=9405:/opt/jmx/kafka-jmx-config.yml"
       KAFKA_CLUSTER_ID: "MkU3OEVBNTcwNTJENDM2Qk"
     # [수정됨]
-    command: >
-      bash -c "
+    command: |
+      bash -c '
+      set -e
+
       if [ ! -f /var/lib/kafka/data/meta.properties ]; then
-        echo 'Example Project: Formatting Kafka Storage...'
-        /opt/kafka/bin/kafka-storage.sh format -t $${KAFKA_CLUSTER_ID} -c /opt/kafka/config/kraft/server.properties --ignore-formatted
+        echo "Example Project: Formatting Kafka Storage..."
+        /opt/kafka/bin/kafka-storage.sh format \
+          -t "$KAFKA_CLUSTER_ID" \
+          -c /opt/kafka/config/kraft/server.properties \
+          --ignore-formatted
       fi
-      /opt/kafka/bin/kafka-server-start.sh /opt/kafka/config/kraft/server.properties
-      "
+
+      exec /opt/kafka/bin/kafka-server-start.sh /opt/kafka/config/kraft/server.properties
+      '
     healthcheck:
       test: ["CMD", "bash", "-c", "echo > /dev/tcp/kafka-1/9092"]
       interval: 5s
@@ -122,14 +134,20 @@ services:
       KAFKA_OPTS: "-javaagent:/opt/jmx/jmx_prometheus_javaagent.jar=9406:/opt/jmx/kafka-jmx-config.yml"
       KAFKA_CLUSTER_ID: "MkU3OEVBNTcwNTJENDM2Qk"
     # [수정됨]
-    command: >
-      bash -c "
+    command: |
+      bash -c '
+      set -e
+
       if [ ! -f /var/lib/kafka/data/meta.properties ]; then
-        echo 'Example Project: Formatting Kafka Storage...'
-        /opt/kafka/bin/kafka-storage.sh format -t $${KAFKA_CLUSTER_ID} -c /opt/kafka/config/kraft/server.properties --ignore-formatted
+        echo "Example Project: Formatting Kafka Storage..."
+        /opt/kafka/bin/kafka-storage.sh format \
+          -t "$KAFKA_CLUSTER_ID" \
+          -c /opt/kafka/config/kraft/server.properties \
+          --ignore-formatted
       fi
-      /opt/kafka/bin/kafka-server-start.sh /opt/kafka/config/kraft/server.properties
-      "
+
+      exec /opt/kafka/bin/kafka-server-start.sh /opt/kafka/config/kraft/server.properties
+      '
     healthcheck:
       test: ["CMD", "bash", "-c", "echo > /dev/tcp/kafka-1/9092"]
       interval: 5s
@@ -505,7 +523,7 @@ services:
     ports:
       - "5432:5432"
     volumes:
-      - ./pgdata:/var/lib/postgresql/data
+      - pgdata:/var/lib/postgresql/data
       - ./postgres/init-db:/docker-entrypoint-initdb.d
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
