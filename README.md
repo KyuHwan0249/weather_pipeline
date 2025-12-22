@@ -5,7 +5,7 @@ Kafka, Spark Structured Streaming, MinIO, PostgreSQL, Airflow등을 활용한
 
 Synthetic weather 데이터를 생성 → 검증 → 스트리밍 처리 → 오류 처리(DLQ) →  
 Slack 알림 → Parquet/PostgreSQL 저장 → (Batch ETL 진행 중) → 시각화  
-까지 포함한 **실무에사 기본으로 사용할만한 수준의 간단한 데이터 엔지니어링 아키텍처**를 구현했습니다.
+까지 포함한 **실무에서 기본으로 사용할 만한 수준의 간단한 데이터 엔지니어링 아키텍처**를 구현했습니다.
 
 ## Architecture
 
